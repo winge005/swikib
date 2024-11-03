@@ -1,0 +1,8 @@
+{{ range . }}
+  <li class="list-group-item"><button type="button" class="btn btn-primary" hx-target="#content" hx-get="/swiki/page/update/{{ .Id}}">E</button> <button type="button" hx-confirm="Are you sure you wish to delete this Page?" hx-delete="delete" class="btn btn-danger me-4" (click)="edit({{ .Id }})">D</button>
+  <a class="hand" hx-target="#content" hx-swap="innerHTML" hx-get="/swiki/page/{{ .Id }}">{{ .Title }}</a> &nbsp<i>{{ .Created }}</i>
+  </li>
+{{ end }}
+
+
+

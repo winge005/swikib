@@ -1,0 +1,23 @@
+
+.hand{
+    cursor: pointer;
+}
+
+pre {
+    background: black;
+    color: white;
+}
+
+.edittextarea{
+    height: 550px;
+    resize: none;
+}
+
+.error-text {
+    color: red;
+}
+
+.success-text{
+    color: green;
+}
+

@@ -1,0 +1,85 @@
+<form id="updatelink" hx-trigger="submit" hx-put="/swiki/links/update/{{ .Link.Id }}" hx-swap="innerHTML">
+
+
+  <nav class="navbar navbar-expand-lg bg-body-tertiary sticky">
+    <div class="container-fluid">
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+
+          <li class="nav-item">
+            <button class="btn btn-outline-success" type="button" hx-target="#content" hx-get="/swiki/links/categorie/{{ .Link.Category }}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-left-square" viewBox="0 0 16 16">
+                <path fill-rule="evenodd" d="M15 2a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1zM0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm11.5 5.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5z"/>
+              </svg>
+            </button>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="link"><b>Id: </b><i>{{ .Link.Id}}</i></a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link"><b>Added: </b><i>{{ .Link.Created }}</i></a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link"><b>Updated: </b><i>{{ .Link.Updated }}</i></a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link"><b>Category: </b><i>{{ .Link.Category }}</i></a>
+          </li>
+
+          <li class="nav-item">
+            <button class="btn btn-outline-primary" type="submit" form="updatelink">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-save" viewBox="0 0 16 16">
+                <path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H9.5a1 1 0 0 0-1 1v7.293l2.646-2.647a.5.5 0 0 1 .708.708l-3.5 3.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L7.5 9.293V2a2 2 0 0 1 2-2H14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h2.5a.5.5 0 0 1 0 1z"/>
+              </svg>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="mb-3 px-2">
+    <label for="category" class="form-label">Category</label>
+    <select id="cat" class="form-select" aria-label="Default select example" id="category" name="category">
+      <option selected>Open this select menu</option>
+      {{ range .Categorien }}
+        <option value="{{ . }}">{{ . }}</option>
+      {{ end }}
+    </select>
+  </div>
+
+  <div class="mb-3 px-2">
+    <label for="newcategory" class="form-label">New Category</label>
+    <input type="text" class="form-control" id="newcategory" name="newcategory">
+  </div>
+
+  <div class="mb-3 px-2">
+    <label for="description" class="form-label">Description</label>
+    <input type="text" class="form-control" id="description" name="description" value="{{ .Link.Description }}">
+  </div>
+
+  <div class="mb-3 px-2">
+    <label for="url" class="form-label">Url</label>
+    <input type="text" class="form-control" id="url" name="url" value="{{ .Link.Url }}">
+  </div>
+
+
+<div class="mb-3 px-2">
+  <button class="btn btn-outline-primary" type="submit" form="updatelink">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-save" viewBox="0 0 16 16">
+      <path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H9.5a1 1 0 0 0-1 1v7.293l2.646-2.647a.5.5 0 0 1 .708.708l-3.5 3.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L7.5 9.293V2a2 2 0 0 1 2-2H14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h2.5a.5.5 0 0 1 0 1z"/>
+    </svg>
+  </button>
+</div>
+</form>
+<script>
+  $('#cat').find('option').each(function(i,e){
+    if($(e).val() == '{{ .Link.Category}}'){
+      $('#cat').prop('selectedIndex',i);
+    }
+  });
+</script>
