@@ -77,39 +77,16 @@ func PageAddHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Println("PageAddHandler")
-	bd, err := io.ReadAll(r.Body)
-	if err != nil {
-		log.Printf("%s", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	splittedData := strings.Split(string(bd), "&")
+
 	var page model.Page
-	var category string
-	var newCategory string
-	var title string
-	var content string
+	r.ParseForm()
+
+	category := r.FormValue("category")
+	newCategory := r.FormValue("newcategory")
+	title := r.FormValue("title")
+	content := r.FormValue("mdcontent")
 	tmpl, err := template.ParseFiles("templates/pageaddonsuccess.html")
 
-	for _, kv := range splittedData {
-		kvs := strings.Split(kv, "=")
-		if kvs[0] == "category" {
-			if len(kvs[1]) > 0 {
-				category = helpers.RemoveUrlEncoding(kvs[1])
-				if category == "Select Category" {
-
-				}
-			}
-		} else if kvs[0] == "newcategory" {
-			if len(kvs[1]) > 0 {
-				newCategory = helpers.RemoveUrlEncoding(kvs[1])
-			}
-		} else if kvs[0] == "title" {
-			title = helpers.RemoveUrlEncoding(kvs[1])
-		} else if kvs[0] == "mdcontent" {
-			content = strings.TrimSpace(helpers.RemoveUrlEncoding(kvs[1]))
-		}
-	}
 	var errorMessage = ""
 	if len(category) > 0 && len(newCategory) > 0 {
 		errorMessage = "category and newCategory may not be filled both\n"
@@ -127,21 +104,33 @@ func PageAddHandler(w http.ResponseWriter, r *http.Request) {
 		errorMessage = "Content must be filled\n"
 	}
 
-	if len(category) > 0 {
-		page.Category = category
-	}
+	page.Category = category
 	if len(newCategory) > 0 {
-		page.Category = category
+		page.Category = newCategory
 	}
 
 	if len(errorMessage) == 0 {
 		page.Title = title
 		page.Content = content
 
+		if persistence.IsPageTitleUsed(page.Title) {
+			errorMessage = "Title already used"
+			tmpl, err = template.ParseFiles("templates/pageaddonerror.html")
+			data := struct {
+				Page         model.Page
+				ErrorMessage string
+			}{
+				Page:         page,
+				ErrorMessage: errorMessage,
+			}
+			err = tmpl.Execute(w, data)
+			return
+		}
+
 		id, err := persistence.AddPage(page)
 		if err != nil {
-			tmpl, err = template.ParseFiles("templates/pageaddonerror.html")
 			errorMessage = err.Error()
+			tmpl, err = template.ParseFiles("templates/pageaddonerror.html")
 			data := struct {
 				Page         model.Page
 				ErrorMessage string
@@ -408,3 +397,5 @@ func PageCategoriesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println("categories")
 }
+
+//412

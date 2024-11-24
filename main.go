@@ -44,6 +44,8 @@ func main() {
 	fs := http.FileServer(http.Dir("./frontend"))
 	http.Handle("/", fs)
 
+	// go images.CheckUneededImages()
+
 	srv := http.Server{}
 	sigs := make(chan os.Signal, 1)
 	done := make(chan struct{})

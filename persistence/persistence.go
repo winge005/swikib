@@ -157,6 +157,69 @@ func GetPage(idGiven int) (model.Page, error) {
 	return page, nil
 }
 
+func GetPageFromOfset(recordTh int) (model.Page, error) {
+	var page model.Page
+
+	database, _ := sql.Open("libsql", urlTurso)
+	rows, _ := database.Query("SELECT id, content FROM pages LIMIT 1 OFFSET ?;", recordTh)
+
+	defer rows.Close()
+	defer database.Close()
+
+	var id int
+	var content string
+
+	if rows == nil {
+		return page, errors.New("no result")
+	}
+
+	for rows.Next() {
+		err := rows.Scan(&id, &content)
+		if err != nil {
+			return page, err
+		}
+		page.Id = id
+		page.Content = content
+		break
+	}
+
+	return page, nil
+}
+
+func IsPageTitleUsed(titleGiven string) bool {
+
+	database, _ := sql.Open("libsql", urlTurso)
+	rows, _ := database.Query("SELECT id, category FROM pages where title=?;", titleGiven)
+
+	defer rows.Close()
+	defer database.Close()
+
+	var page model.Page
+	var id int
+	var category string
+
+	if rows == nil {
+		return false
+	}
+
+	for rows.Next() {
+		err := rows.Scan(&id, &category)
+		if err != nil {
+			return false
+		}
+		page.Id = id
+		page.Category = category
+	}
+
+	if page.Id > 0 {
+		log.Printf("Title already exist in category %v id=%v", page.Category, page.Id)
+		return true
+	}
+
+	return false
+
+}
+
 func GetImageFrom(id string) []byte {
 	response := make([]byte, 0)
 	database, err := sql.Open("libsql", urlTurso)
@@ -242,6 +305,32 @@ func AddPage(page model.Page) (int, error) {
 	return id, nil
 }
 
+func GetPagesCount() (int, error) {
+	database, err := sql.Open("libsql", urlTurso)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
+		os.Exit(1)
+	}
+	defer database.Close()
+
+	rows, err := database.Query("SELECT COUNT() as count FROM Pages")
+	if err != nil {
+		fmt.Printf("%s", err)
+	}
+	defer rows.Close()
+
+	var count int
+
+	for rows.Next() {
+		err := rows.Scan(&count)
+		if err != nil {
+			return count, err
+		}
+	}
+
+	return count, nil
+}
+
 func AddImage(id string, data []byte) bool {
 	database, err := sql.Open("libsql", urlTurso)
 
@@ -270,6 +359,30 @@ func AddImage(id string, data []byte) bool {
 	}
 
 	return true
+}
+
+func DeleteImage(id string) error {
+	database, err := sql.Open("libsql", urlTurso)
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
+		os.Exit(1)
+	}
+
+	stmt, err := database.Prepare("delete from pictures where id=?")
+	if err != nil {
+		return err
+	}
+	res, err := stmt.Exec(id)
+	if err != nil {
+		return err
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 1 {
+		return nil
+	}
+
+	return err
 }
 
 func DeletePage(idGiven int) error {
