@@ -217,6 +217,21 @@ func LinkAddHandler(w http.ResponseWriter, r *http.Request) {
 		}{
 			Link:         link,
 			ErrorMessage: err.Error(),
+			Message:      "Something wrong with the template",
+		}
+		err = tmpl.Execute(w, data)
+		return
+	}
+
+	if persistence.LinkExist(link.Url) {
+		errorMessage = "Link already exists"
+		data := struct {
+			Link         model.Link
+			ErrorMessage string
+			Message      string
+		}{
+			Link:         link,
+			ErrorMessage: errorMessage,
 			Message:      "",
 		}
 		err = tmpl.Execute(w, data)

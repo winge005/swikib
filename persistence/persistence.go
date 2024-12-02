@@ -512,39 +512,27 @@ func GetLink(idGiven int) (model.Link, error) {
 	return link, nil
 }
 
-func GetLinksFromUrlAndDescription(givenUrl, givenDescription string) (model.Link, error) {
-	var link model.Link
+func LinkExist(givenUrl string) bool {
 
 	database, err := sql.Open("libsql", urlTurso)
 	if err != nil {
-		return link, err
+		return false
 	}
-	rows, _ := database.Query("select id, url, description, category, created from links where url = ?", givenUrl)
+	rows, _ := database.Query("select id from links where url = ?", givenUrl)
 
 	defer rows.Close()
 	defer database.Close()
 
 	var id int
-	var url string
-	var description string
-	var category string
-	var created string
-	var updated string
 
 	for rows.Next() {
-		err := rows.Scan(&id, &url, &description, &category, &created, &updated)
+		err := rows.Scan(&id)
 		if err != nil {
-			return link, err
+			return false
 		}
-		var link model.Link
-		link.Id = id
-		link.Url = url
-		link.Category = category
-		link.Description = description
-		link.Created = created
-		link.Updated = updated
+		return true
 	}
-	return link, nil
+	return false
 }
 
 func UpdateLink(newLink model.Link) error {
@@ -578,20 +566,31 @@ func AddLink(newLink model.Link) (int, error) {
 	}
 
 	var id int
-	stmt, err := database.Prepare("insert into links (category, url, description, created) VALUES (?,?,?,?) RETURNING id")
+	var rows *sql.Rows
+
+	rows, _ = database.Query("select id from links where url=?", newLink.Url)
+	for rows.Next() {
+		err := rows.Scan(&id)
+		if err != nil {
+			return 0, err
+		}
+
+		if id > 0 {
+			return 0, errors.New("Already exist.")
+		}
+	}
+
+	stmt, err := database.Prepare("INSERT INTO links (category, url, description, created) VALUES (?,?,?,?) RETURNING id")
 	if err != nil {
 		return 0, err
 	}
+
 	defer stmt.Close()
 
-	_, err = stmt.Exec(newLink.Category, newLink.Url, newLink.Description, helpers.GetCurrentDateTime())
+	err = stmt.QueryRow(newLink.Category, newLink.Url, newLink.Description, helpers.GetCurrentDateTime(), "").Scan(&id)
 	if err != nil {
 		return 0, err
 	}
-
-	//if id > 0 {
-	//	return id, err
-	//}
 
 	return id, nil
 }
