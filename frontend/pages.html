@@ -23,12 +23,17 @@
     <div id="navbar"></div>
     <h1>Pages</h1>
 
-    <div class="row mt-5">
-        <div class="col-2">
-            <ul class="list-group" hx-get="/swiki/page/categories" hx-swap="innerHTML" hx-trigger="load" style="overflow: auto;height: 550px;">
-            </ul>
+    <div class="row">
+        <div class="col-12">
+            <div class="dropdown">
+                <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Dropdown button
+                </button>
+                <ul class="dropdown-menu" hx-get="/swiki/page/categories" hx-swap="innerHTML" hx-trigger="load">
+                </ul>
+            </div>
         </div>
-        <div class="col-10" >
+        <div class="col-12 mt-2" >
             <ul class="list-group" style="overflow: auto;height: 550px;">
                 <div id="content"></div>
             </ul>

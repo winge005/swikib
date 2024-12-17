@@ -580,14 +580,14 @@ func AddLink(newLink model.Link) (int, error) {
 		}
 	}
 
-	stmt, err := database.Prepare("INSERT INTO links (category, url, description, created) VALUES (?,?,?,?) RETURNING id")
+	stmt, err := database.Prepare("INSERT INTO links(category, url, description, created) VALUES (?,?,?,?) RETURNING id")
 	if err != nil {
 		return 0, err
 	}
 
 	defer stmt.Close()
 
-	err = stmt.QueryRow(newLink.Category, newLink.Url, newLink.Description, helpers.GetCurrentDateTime(), "").Scan(&id)
+	err = stmt.QueryRow(newLink.Category, newLink.Url, newLink.Description, helpers.GetCurrentDateTime()).Scan(&id)
 	if err != nil {
 		return 0, err
 	}

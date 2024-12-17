@@ -13,6 +13,7 @@ import (
 	"swiki/model"
 	"swiki/persistence"
 	"text/template"
+	"time"
 )
 
 func PageHandler(w http.ResponseWriter, r *http.Request) {
@@ -20,6 +21,11 @@ func PageHandler(w http.ResponseWriter, r *http.Request) {
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
+	}
+
+	fmt.Printf("Request at %v\n", time.Now())
+	for k, v := range r.Header {
+		fmt.Printf("%v: %v\n", k, v)
 	}
 
 	categories, err := persistence.GetCategories()
@@ -305,7 +311,6 @@ func PageDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "http://localhost:5001/pages.html", http.StatusSeeOther)
-
 }
 
 func PageViewHandler(w http.ResponseWriter, r *http.Request) {
