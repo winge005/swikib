@@ -19,6 +19,8 @@ var links = "CREATE TABLE IF NOT EXISTS links(id INTEGER PRIMARY KEY, category v
 var pages = "CREATE TABLE IF NOT EXISTS pages(id INTEGER, category varchar(200), title varchar(255), content TEXT, created varchar(19), updated varchar(19))"
 var pictures = "CREATE TABLE IF NOT EXISTS pictures(id varchar(200), image BLOB, created varchar(19), updated varchar(19))"
 
+var abbreviationsInCache = make(map[string][]model.Abbreviation)
+
 func SetConfig(token string) {
 	accesskeyTurso = token
 	urlTurso = "libsql://swiki-winge005.turso.io?authToken=" + accesskeyTurso
@@ -331,6 +333,45 @@ func GetPagesCount() (int, error) {
 	return count, nil
 }
 
+func GetPageByAnd(queryPart string) ([]model.Page, error) {
+	var page model.Page
+	var pages []model.Page
+
+	database, _ := sql.Open("libsql", urlTurso)
+	fmt.Println("select id, category, title, content, created, updated from pages where " + queryPart)
+	rows, _ := database.Query("select id, category, title, content, created, updated from pages where " + queryPart)
+
+	defer rows.Close()
+	defer database.Close()
+
+	var id int
+	var category string
+	var title string
+	var content string
+	var created string
+	var updated string
+
+	if rows == nil {
+		return pages, errors.New("no result")
+	}
+
+	for rows.Next() {
+		err := rows.Scan(&id, &category, &title, &content, &created, &updated)
+		if err != nil {
+			return pages, err
+		}
+		page.Id = id
+		page.Category = category
+		page.Title = title
+		page.Content = content
+		page.Created = created
+		page.Updated = updated
+		pages = append(pages, page)
+	}
+
+	return pages, nil
+}
+
 func AddImage(id string, data []byte) bool {
 	database, err := sql.Open("libsql", urlTurso)
 
@@ -612,6 +653,46 @@ func DeleteLink(idGiven int) error {
 	}
 
 	return nil
+}
+
+func PerformCache() {
+	setAbbreviationInCache()
+}
+
+func setAbbreviationInCache() {
+	var abbreviation model.Abbreviation
+	database, _ := sql.Open("libsql", urlTurso)
+	rows, _ := database.Query("select id, name, description from abbreviations")
+	defer rows.Close()
+	defer database.Close()
+
+	var id int
+	var name string
+	var description string
+
+	for rows.Next() {
+		err := rows.Scan(&id, &name, &description)
+		if err != nil {
+			log.Panic("No rows found for abbreviations")
+		}
+		abbreviation.Id = id
+		abbreviation.Name = name
+		abbreviation.Description = description
+		firstLetter := string(abbreviation.Name[0])
+
+		_, ok := abbreviationsInCache[firstLetter]
+		if ok {
+			abbreviationsInCache[firstLetter] = append(abbreviationsInCache[firstLetter], abbreviation)
+		} else {
+			var abbreviations []model.Abbreviation
+			abbreviations = append(abbreviations, abbreviation)
+			abbreviationsInCache[firstLetter] = abbreviations
+		}
+	}
+}
+
+func GetAbbreviationsForLetter(givenLetter string) ([]model.Abbreviation, error) {
+	return abbreviationsInCache[givenLetter], nil
 }
 
 func Play() {

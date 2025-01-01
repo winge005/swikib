@@ -41,6 +41,9 @@ func main() {
 	http.HandleFunc("POST /swiki/links", handlers.LinkAddHandler)
 	http.HandleFunc("DELETE /swiki/links/{id}", handlers.LinkDeleteHandler)
 
+	http.HandleFunc("POST /swiki/abbreviation", handlers.AbbreviationAddHandler)
+	http.HandleFunc("GET /swiki/abbreviation/{fl}", handlers.AbbreviationHandler)
+
 	fs := http.FileServer(http.Dir("./frontend"))
 	http.Handle("/", fs)
 
@@ -61,7 +64,7 @@ func main() {
 		os.Exit(0)
 	}()
 
-	// persistence.Play()
+	persistence.PerformCache()
 
 	log.Printf("listening on port: %v\n", config.Server.Port)
 

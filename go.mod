@@ -4,6 +4,7 @@ go 1.23.1
 
 require (
 	github.com/gomarkdown/markdown v0.0.0-20240730141124-034f12af3bf6
+	github.com/kljensen/snowball v0.10.0
 	github.com/tursodatabase/libsql-client-go v0.0.0-20240902231107-85af5b9d094d
 	gopkg.in/yaml.v2 v2.4.0
 )

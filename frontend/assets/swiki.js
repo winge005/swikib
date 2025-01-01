@@ -53,8 +53,8 @@ function getNavContent() {
     navContent +="  </li>";
     navContent +="</ul>";
     navContent +="<form class=\"d-flex\" role=\"search\">";
-    navContent +="  <input class=\"form-control me-2\" type=\"search\" placeholder=\"Search\" aria-label=\"Search\"/>";
-    navContent +="  <button class=\"btn btn-outline-success\" type=\"submit\">Search</button>";
+    navContent +="  <input class=\"form-control me-2\" type=\"search\" placeholder=\"Search\" aria-label=\"Search\" id=\"search\" />";
+    navContent +="  <button class=\"btn btn-outline-success\" type=\"button\" onClick=\"openPage('/search.html?s=' + document.getElementById('search').value)\">Search</button>";
     navContent +="</form>";
     navContent +="</div>";
     navContent +="</div>";

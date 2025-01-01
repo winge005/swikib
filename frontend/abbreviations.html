@@ -7,6 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <script src="https://unpkg.com/htmx.org@2.0.2"></script>
     <link href="assets/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link href="assets/swiki.css" rel="stylesheet" crossorigin="anonymous">
     <title>Abbreviations</title>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="assets/swiki.js"></script>
@@ -16,16 +17,287 @@
         });
     </script>
 </head>
-
 <body>
 
 <div class="container">
     <div id="navbar"></div>
-
     <h1>Abbreviations</h1>
 
+    <div class="row">
+        <div class="col-1">
+        </div>
+        <div class="col-10">
+            <div class="accordion accordion-flush" id="accordionFlushExample">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseA" aria-expanded="false" aria-controls="flush-collapseOne" hx-get="/swiki/abbreviation/A" hx-target="#acontent">
+                            A
+                        </button>
+                    </h2>
+                    <div id="flush-collapseA" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="acontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseB" aria-expanded="false" aria-controls="flush-collapseTwo" hx-get="/swiki/abbreviation/B" hx-target="#bcontent">
+                            B
+                        </button>
+                    </h2>
+                    <div id="flush-collapseB" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="bcontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseC" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/C" hx-target="#ccontent">
+                            C
+                        </button>
+                    </h2>
+                    <div id="flush-collapseC" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="ccontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseD" aria-expanded="false" aria-controls="flush-collapseThree"  hx-get="/swiki/abbreviation/D" hx-target="#dcontent">
+                            D
+                        </button>
+                    </h2>
+                    <div id="flush-collapseD" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="dcontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseE" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/E" hx-target="#econtent">
+                            E
+                        </button>
+                    </h2>
+                    <div id="flush-collapseE" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="econtent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseF" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/F" hx-target="#fcontent">
+                            F
+                        </button>
+                    </h2>
+                    <div id="flush-collapseF" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="fcontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseG" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/G" hx-target="#gcontent">
+                            G
+                        </button>
+                    </h2>
+                    <div id="flush-collapseG" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="gcontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseH" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/H" hx-target="#hcontent">
+                            H
+                        </button>
+                    </h2>
+                    <div id="flush-collapseH" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="hcontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseI" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/I" hx-target="#icontent">
+                            I
+                        </button>
+                    </h2>
+                    <div id="flush-collapseI" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="icontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseJ" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/J" hx-target="#jcontent">
+                            J
+                        </button>
+                    </h2>
+                    <div id="flush-collapseJ" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="jcontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseK" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/K" hx-target="#kcontent">
+                            K
+                        </button>
+                    </h2>
+                    <div id="flush-collapseK" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="kcontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseL" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/L" hx-target="#lcontent">
+                            L
+                        </button>
+                    </h2>
+                    <div id="flush-collapseL" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="lcontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseM" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/M" hx-target="#mcontent">
+                            M
+                        </button>
+                    </h2>
+                    <div id="flush-collapseM" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="mcontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseN" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/N" hx-target="#ncontent">
+                            N
+                        </button>
+                    </h2>
+                    <div id="flush-collapseN" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="ncontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseO" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/O" hx-target="#ocontent">
+                            O
+                        </button>
+                    </h2>
+                    <div id="flush-collapseO" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="ocontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseP" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/P" hx-target="#pcontent">
+                            P
+                        </button>
+                    </h2>
+                    <div id="flush-collapseP" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="pcontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseQ" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/Q" hx-target="#qcontent">
+                            Q
+                        </button>
+                    </h2>
+                    <div id="flush-collapseQ" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="qcontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseR" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/R" hx-target="#rcontent">
+                            R
+                        </button>
+                    </h2>
+                    <div id="flush-collapseR" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="rcontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseS" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/S" hx-target="#scontent">
+                            S
+                        </button>
+                    </h2>
+                    <div id="flush-collapseS" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="scontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseT" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/T" hx-target="#tcontent">
+                            T
+                        </button>
+                    </h2>
+                    <div id="flush-collapseT" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="tcontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseU" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/U" hx-target="#ucontent">
+                            U
+                        </button>
+                    </h2>
+                    <div id="flush-collapseU" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="ucontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseV" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/V" hx-target="#vcontent">
+                            V
+                        </button>
+                    </h2>
+                    <div id="flush-collapseV" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="vcontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseW" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/W" hx-target="#wcontent">
+                            W
+                        </button>
+                    </h2>
+                    <div id="flush-collapseW" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="wcontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseX" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/X" hx-target="#xcontent">
+                            X
+                        </button>
+                    </h2>
+                    <div id="flush-collapseX" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="xcontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseY" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/Y" hx-target="#ycontent">
+                            Y
+                        </button>
+                    </h2>
+                    <div id="flush-collapseY" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="ycontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseZ" aria-expanded="false" aria-controls="flush-collapseThree" hx-get="/swiki/abbreviation/Z" hx-target="#zcontent">
+                            Z
+                        </button>
+                    </h2>
+                    <div id="flush-collapseZ" class="accordion-collapse collapse" data-bs-parent="#accordionFlushExample">
+                        <div class="accordion-body"><div id="zcontent" hx-swap="outerHTML"></div></div>
+                    </div>
+                </div>
 
+            </div>
+        </div>
+
+        <div class="col-1">
+        </div>
+    </div>
 </div>
-    <script src="../../swiki/frontend/assets/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+
+<script src="assets/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
 </body>
 </html>
+

@@ -1,0 +1,11 @@
+{{ if .ErrorMessage }}
+nothing found
+{{ end }}
+
+
+<table>
+    <tr><th>Abbreviation</th><th>Description</th></tr>
+{{ range .Abbreviations }}
+    <tr><td>{{ .Name }}</td><td>{{ .Description }}</td></tr>
+{{ end }}
+</table>
