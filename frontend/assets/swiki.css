@@ -21,3 +21,20 @@ pre {
     color: green;
 }
 
+.middleheader{
+    background-color: grey;
+    font-size: larger;
+    font-weight: bold;
+    align-self: center;
+}
+
+.htmx-indicator{
+    opacity:0;
+    transition: opacity 500ms ease-in;
+}
+.htmx-request .htmx-indicator{
+    opacity:1;
+}
+.htmx-request.htmx-indicator{
+    opacity:1;
+}

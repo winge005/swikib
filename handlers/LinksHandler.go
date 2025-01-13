@@ -186,6 +186,9 @@ func LinkAddHandler(w http.ResponseWriter, r *http.Request) {
 
 	link.Description = description
 	link.Url = url
+	if category == "Select category" {
+		category = ""
+	}
 
 	var errorMessage = ""
 	if len(category) > 0 && len(newCategory) > 0 {
@@ -208,15 +211,17 @@ func LinkAddHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tmpl, err := template.ParseFiles("templates/linkaddresponse.html")
-	if err != nil {
-		errorMessage = err.Error()
+	if err != nil || len(errorMessage) > 0 {
+		if err != nil {
+			errorMessage = err.Error()
+		}
 		data := struct {
 			Link         model.Link
 			ErrorMessage string
 			Message      string
 		}{
 			Link:         link,
-			ErrorMessage: err.Error(),
+			ErrorMessage: errorMessage,
 			Message:      "Something wrong with the template",
 		}
 		err = tmpl.Execute(w, data)

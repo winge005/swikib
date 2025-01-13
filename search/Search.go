@@ -100,9 +100,9 @@ func Search(query string) ([]model.Page, error) {
 		q = q[0 : len(q)-4]
 	}
 
-	pages, err = persistence.GetPageByAnd(q)
+	pages, err = persistence.GetPageByQuery(q)
 	if err != nil {
-		return pages, err
+		return pages, nil
 	}
 	return pages, nil
 }

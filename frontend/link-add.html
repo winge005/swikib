@@ -39,7 +39,7 @@
         </div>
     </nav>
 
-    <form id="addlink" hx-trigger="submit" hx-post="/swiki/links" hx-swap="outerHTML">
+    <form id="addlink" hx-trigger="submit" hx-post="/swiki/links" target="#addlink" hx-swap="innerHTML">
         <div class="container">
             <div class="row">
                 <div class="col-6">
@@ -57,7 +57,7 @@
             </div>
 
             <div class="mb-3 px-2">
-                <label for="description" class="form-label">Title</label>
+                <label for="description" class="form-label">Description</label>
                 <input type="text" class="form-control" id="description" name="description">
             </div>
 
@@ -73,8 +73,15 @@
                     </svg>
                 </button>
             </div>
+        </div>
+        <div class="mb-3 px-2">
+            <label></label>
+        </div>
+        <div class="mb-3 px-2">
+            <label></label>
+        </div>
     </form>
-</div>
+
 </div>
 
 <script src="assets/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>

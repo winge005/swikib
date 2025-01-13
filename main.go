@@ -29,7 +29,7 @@ func main() {
 	http.HandleFunc("PUT /swiki/page/{id}", handlers.PageUpdateHandler)
 	http.HandleFunc("DELETE /swiki/page/{id}", handlers.PageDeleteHandler)
 	http.HandleFunc("POST /swiki/page", handlers.PageAddHandler)
-	http.HandleFunc("GET /swiki/page/preview/{mdcontent}", handlers.PreviewHandler)
+	http.HandleFunc("POST /swiki/page/preview", handlers.PreviewHandler)
 	http.HandleFunc("GET /swiki/pages/image/", handlers.ImageHandler)
 	http.HandleFunc("POST /swiki/pages/uploadImage", handlers.UploadImageHandler)
 
@@ -44,10 +44,13 @@ func main() {
 	http.HandleFunc("POST /swiki/abbreviation", handlers.AbbreviationAddHandler)
 	http.HandleFunc("GET /swiki/abbreviation/{fl}", handlers.AbbreviationHandler)
 
+	http.HandleFunc("POST /swiki/search", handlers.SearchHandler)
+
 	fs := http.FileServer(http.Dir("./frontend"))
 	http.Handle("/", fs)
 
 	// go images.CheckUneededImages()
+	// persistence.Play()
 
 	srv := http.Server{}
 	sigs := make(chan os.Signal, 1)

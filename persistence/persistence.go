@@ -159,7 +159,7 @@ func GetPage(idGiven int) (model.Page, error) {
 	return page, nil
 }
 
-func GetPageFromOfset(recordTh int) (model.Page, error) {
+func GetPageFromOffset(recordTh int) (model.Page, error) {
 	var page model.Page
 
 	database, _ := sql.Open("libsql", urlTurso)
@@ -333,15 +333,17 @@ func GetPagesCount() (int, error) {
 	return count, nil
 }
 
-func GetPageByAnd(queryPart string) ([]model.Page, error) {
+func GetPageByQuery(queryPart string) ([]model.Page, error) {
 	var page model.Page
 	var pages []model.Page
 
-	database, _ := sql.Open("libsql", urlTurso)
-	fmt.Println("select id, category, title, content, created, updated from pages where " + queryPart)
-	rows, _ := database.Query("select id, category, title, content, created, updated from pages where " + queryPart)
+	database, err := sql.Open("libsql", urlTurso)
+	if err != nil {
+		return pages, err
+	}
+	fmt.Println("select id, category, title, content, created, updated from pages where" + queryPart)
+	rows, _ := database.Query("select id, category, title, content, created, updated from pages where" + queryPart)
 
-	defer rows.Close()
 	defer database.Close()
 
 	var id int
@@ -352,8 +354,9 @@ func GetPageByAnd(queryPart string) ([]model.Page, error) {
 	var updated string
 
 	if rows == nil {
-		return pages, errors.New("no result")
+		return pages, nil
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		err := rows.Scan(&id, &category, &title, &content, &created, &updated)
@@ -402,28 +405,31 @@ func AddImage(id string, data []byte) bool {
 	return true
 }
 
-func DeleteImage(id string) error {
+func DeleteImage(id string) (int64, error) {
 	database, err := sql.Open("libsql", urlTurso)
-
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
 		os.Exit(1)
 	}
+	defer database.Close()
 
 	stmt, err := database.Prepare("delete from pictures where id=?")
 	if err != nil {
-		return err
+		return 0, err
 	}
+	defer stmt.Close()
+
 	res, err := stmt.Exec(id)
 	if err != nil {
-		return err
-	}
-	affected, _ := res.RowsAffected()
-	if affected == 1 {
-		return nil
+		return 0, err
 	}
 
-	return err
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+
+	return affected, err
 }
 
 func DeletePage(idGiven int) error {
@@ -695,6 +701,61 @@ func GetAbbreviationsForLetter(givenLetter string) ([]model.Abbreviation, error)
 	return abbreviationsInCache[givenLetter], nil
 }
 
+func GetImageCount() (int, error) {
+	database, err := sql.Open("libsql", urlTurso)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
+		os.Exit(1)
+	}
+	defer database.Close()
+
+	rows, err := database.Query("SELECT COUNT() as count FROM pictures")
+
+	if err != nil {
+		fmt.Printf("%s", err)
+	}
+	defer rows.Close()
+
+	var count int
+
+	for rows.Next() {
+		err := rows.Scan(&count)
+		if err != nil {
+			return count, err
+		}
+	}
+
+	return count, nil
+}
+
+func GetImageFromOffSet(recordTh int) (string, error) {
+	var image string
+
+	database, _ := sql.Open("libsql", urlTurso)
+	rows, _ := database.Query("SELECT id FROM pictures LIMIT 1 OFFSET ?;", recordTh)
+
+	defer rows.Close()
+	defer database.Close()
+
+	var id string
+
+	if rows == nil {
+		return image, errors.New("no result")
+	}
+
+	for rows.Next() {
+		err := rows.Scan(&id)
+		if err != nil {
+			return image, err
+		}
+		image = id
+
+		break
+	}
+
+	return image, nil
+}
+
 func Play() {
 
 	//var pages []model.Page
@@ -706,37 +767,45 @@ func Play() {
 		return
 	}
 
-	stmt, err := database.Prepare("delete from links where category='';")
-
-	defer database.Close()
-	defer stmt.Close()
-
-	_, err = stmt.Exec()
+	rows, err := database.Query("select id, category,description, url from links where id='245';")
 	if err != nil {
-		log.Println("failed deleting")
+		log.Println(err.Error())
 		return
 	}
+	//stmt, err := database.Prepare("select id, category,title  from links where category='';")
 
-	//var id int
-	//var category string
-	//var title string
+	defer database.Close()
+	//defer stmt.Close()
+	defer rows.Close()
+
+	//_, err = stmt.Exec()
+	//if err != nil {
+	//	log.Println("failed deleting")
+	//	return
+	//}
+
+	var id int
+	var category string
+	var description string
+	var url string
 	//var content string
 	//var created string
 	//var updated string
 	//
-	//for rows.Next() {
-	//	err := rows.Scan(&id, &category, &title, &content, &created, &updated)
-	//	if err != nil {
-	//		return
-	//	}
-	//	page.Id = id
-	//	page.Category = category
-	//	page.Title = title
-	//	page.Content = content
-	//	page.Created = created
-	//	page.Updated = updated
-	//	pages = append(pages, page)
-	//}
+	for rows.Next() {
+		err := rows.Scan(&id, &category, &description, &url)
+		if err != nil {
+			return
+		}
+		fmt.Println(id, category, description, url)
+
+		//	page.Content = content
+		//	page.Created = created
+		//	page.Updated = updated
+		//	pages = append(pages, page)
+	}
+
+	UpdateLink(model.Link{Id: id, Category: "go", Url: url, Description: description})
 
 	//for _, page := range pages {
 	//fmt.Println(page.Id)

@@ -1,0 +1,38 @@
+<div id="searchresult">
+    <div class="row mb-3">
+        <div class="col-6">
+            <div class="middleheader ps-2">Search Result</div>
+        </div>
+    </div>
+
+    <div class="row">
+
+        {{ if .ErrorMessage }}
+        <div class="mb-6 px-2">
+            <input class="form-control error-text" id="error" name="error" value="{{ .ErrorMessage }}">
+        </div>
+        {{ end }}
+
+
+        <table class="table">
+
+            <thead class="table-light">
+            <tr>
+                <th scope="col">Id</th>
+                <th scope="col">Title</th>
+            </tr>
+            </thead>
+
+            {{ range .Pages }}
+
+            <tbody>
+            <tr>
+                <td>{{ .Id }}</td>
+                <td><a class="hand" hx-target="#content" hx-swap="innerHTML" hx-get="/swiki/page/{{ .Id }}">{{ .Title }}</a></td>
+            </tr>
+            </tbody>
+            {{ end }}
+        </table>
+
+        <div id="content"></div>
+    </div>

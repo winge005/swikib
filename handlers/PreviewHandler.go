@@ -1,13 +1,13 @@
 package handlers
 
 import (
-	"fmt"
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/html"
+	"io"
 	"log"
 	"net/http"
+	"strings"
 	"swiki/helpers"
-	"swiki/model"
 	"text/template"
 )
 
@@ -19,9 +19,26 @@ func PreviewHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Println("PreviewHandler")
-	content := r.PathValue("mdcontent")
 
-	fmt.Println(content)
+	//var page model.Page
+	//r.ParseForm()
+
+	//content := r.PathValue("mdcontent")
+
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	bodyString := string(bodyBytes)
+	bodyString = bodyString[111:]
+	posTrailer := strings.Index(bodyString, "-----------------------------")
+	bodyString = bodyString[:posTrailer]
+	bodyString = strings.TrimSpace(bodyString)
+
+	htmlFlags := html.CommonFlags | html.HrefTargetBlank
+	opts := html.RendererOptions{Flags: htmlFlags}
+	renderer := html.NewRenderer(opts)
+	result := string(markdown.ToHTML([]byte(bodyString), nil, renderer))
 
 	tmpl, err := template.ParseFiles("templates/pagepreview.html")
 	if tmpl == nil {
@@ -29,17 +46,11 @@ func PreviewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//md := []byte(page.Content)
-	htmlFlags := html.CommonFlags | html.HrefTargetBlank
-	opts := html.RendererOptions{Flags: htmlFlags}
-	renderer := html.NewRenderer(opts)
-	result := string(markdown.ToHTML([]byte(content), nil, renderer))
-	page := model.Page{Title: "Preview", Content: result}
-	err = tmpl.Execute(w, page)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	data := struct {
+		PreviewContent string
+	}{
+		PreviewContent: result,
 	}
-
+	err = tmpl.Execute(w, data)
+	return
 }
