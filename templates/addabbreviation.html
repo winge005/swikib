@@ -1,0 +1,19 @@
+
+
+<table>
+    <tr><th>Abbreviation</th><th>Description</th></tr>
+     Abbreviation added
+    <tr><td>{{ .Abbreviation.Name }}</td><td>{{ .Abbreviation.Description }}</td></tr>
+</table>
+
+{{ if .ErrorMessage }}
+<div class="mb-3 px-2">
+    <label class="alert alert-danger">{{ .ErrorMessage}} </label>
+</div>
+{{ end }}
+
+{{ if .Message }}
+<div class="mb-3 px-2">
+    <label class="alert alert-danger">{{ .Message}} </label>
+</div>
+{{ end }}

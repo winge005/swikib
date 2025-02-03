@@ -1,4 +1,4 @@
-    <form id="addlink" hx-trigger="submit" hx-post="/swiki/links" target="#addlink" hx-swap="innerHTML">
+    <form id="addlink" hx-trigger="submit" hx-post="/swiki/links" target="#addlink" hx-swap="outerHTML">
         <div class="container">
             <div class="row">
                 <div class="col-6">
@@ -48,5 +48,8 @@
         </div>
         {{ end }}
 
+        <div class="mb-3 px-2">
+            <label class="alert alert-success">{{ .Message}} </label>
+        </div>
     </form>
 

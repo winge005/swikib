@@ -7,6 +7,7 @@ import (
 	_ "github.com/tursodatabase/libsql-client-go/libsql"
 	"log"
 	"os"
+	"strings"
 	"swiki/helpers"
 	"swiki/model"
 )
@@ -699,6 +700,26 @@ func setAbbreviationInCache() {
 
 func GetAbbreviationsForLetter(givenLetter string) ([]model.Abbreviation, error) {
 	return abbreviationsInCache[givenLetter], nil
+}
+
+func AddAbbreviation(abbreviation model.Abbreviation) (int, error) {
+	database, _ := sql.Open("libsql", urlTurso)
+	defer database.Close()
+
+	var id int
+	stmt, err := database.Prepare("INSERT INTO abbreviations (name, description) VALUES (?,?) RETURNING id")
+	if err != nil {
+		return 0, err
+	}
+	defer stmt.Close()
+	err = stmt.QueryRow(strings.ToUpper(abbreviation.Name), abbreviation.Description).Scan(&id)
+	if err != nil {
+		return 0, err
+	}
+	abbrss := abbreviationsInCache[strings.ToUpper(abbreviation.Name[0:1])]
+	abbrss = append(abbrss, abbreviation)
+	abbreviationsInCache[strings.ToUpper(abbreviation.Name[0:1])] = abbrss
+	return id, nil
 }
 
 func GetImageCount() (int, error) {

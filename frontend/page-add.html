@@ -28,8 +28,6 @@
             const response = await fetch(`/swiki/page/preview`, {
                 method: 'POST',
                 headers: {
-                    // 'Accept': 'application/json',
-                    // 'Authorization': `Bearer ${token}`
                 },
                 body: formData
             });
@@ -293,7 +291,7 @@
             </div>
         </form>
 
-    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal fade w-75 h-75" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
