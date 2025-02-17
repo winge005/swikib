@@ -110,6 +110,10 @@ func PageAddHandler(w http.ResponseWriter, r *http.Request) {
 		errorMessage = "Content must be filled\n"
 	}
 
+	title = helpers.Trim(title)
+	category = helpers.Trim(category)
+	content = helpers.Trim(content)
+
 	page.Category = category
 	if len(newCategory) > 0 {
 		page.Category = newCategory

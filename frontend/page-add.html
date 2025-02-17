@@ -21,15 +21,13 @@
             const content = document.getElementById("mdcontent");
 
             let formData = new FormData();
-            formData.append('mdcontent', content.value);
-
-
+            formData.append('Content', content.value);
 
             const response = await fetch(`/swiki/page/preview`, {
                 method: 'POST',
                 headers: {
                 },
-                body: formData
+                body: formData,
             });
 
            const result = document.getElementById("result");

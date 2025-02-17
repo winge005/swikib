@@ -125,3 +125,7 @@ func RemoveUrlEncoding(content string) string {
 	}
 	return content
 }
+
+func Trim(value string) string {
+	return strings.TrimSpace(value)
+}
