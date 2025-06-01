@@ -53,6 +53,17 @@ func AbbreviationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func AbbreviationDelete(w http.ResponseWriter, r *http.Request) {
+	helpers.EnableCors(&w)
+	if (*r).Method == http.MethodOptions {
+		_, _ = w.Write([]byte("allowed"))
+		return
+	}
+	pathparam := strings.TrimPrefix(r.URL.Path, "/swiki/abbreviation/")
+	persistence.DeleteAbbreviation(pathparam)
+
+}
+
 func AbbreviationAddHandler(w http.ResponseWriter, r *http.Request) {
 	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
@@ -61,14 +72,11 @@ func AbbreviationAddHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var errorMessage = ""
-
-	log.Println("PageAbbreviationHandler")
-
 	var abbreviation model.Abbreviation
 	r.ParseForm()
 
-	abbreviation.Name = r.FormValue("name")
-	abbreviation.Description = r.FormValue("description")
+	abbreviation.Name = helpers.RemoveSpacesBeforAndAfter(r.FormValue("name"))
+	abbreviation.Description = helpers.RemoveSpacesBeforAndAfter(r.FormValue("description"))
 
 	if len(abbreviation.Name) < 2 || len(abbreviation.Description) < 2 {
 		log.Println("Wrong input")

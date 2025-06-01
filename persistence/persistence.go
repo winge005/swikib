@@ -722,6 +722,44 @@ func AddAbbreviation(abbreviation model.Abbreviation) (int, error) {
 	return id, nil
 }
 
+func DeleteAbbreviation(abbreviationName string) error {
+	database, err := sql.Open("libsql", urlTurso)
+	if err != nil {
+		return err
+	}
+
+	defer database.Close()
+
+	stmt, err := database.Prepare("Delete from abbreviations where name = ?")
+	if err != nil {
+		return err
+	}
+	_, err = stmt.Exec(strings.ToUpper(abbreviationName))
+
+	defer stmt.Close()
+
+	firstLetter := string(abbreviationName[0])
+	abbrss := abbreviationsInCache[firstLetter]
+
+	var delRecord = -1
+
+	for i, abbr := range abbrss {
+		if abbr.Name == abbreviationName {
+			delRecord = i
+			break
+		}
+	}
+
+	if delRecord >= 0 {
+		deleteElement(abbrss, delRecord)
+	}
+	return err
+}
+
+func deleteElement(slice []model.Abbreviation, index int) []model.Abbreviation {
+	return append(slice[:index], slice[index+1:]...)
+}
+
 func GetImageCount() (int, error) {
 	database, err := sql.Open("libsql", urlTurso)
 	if err != nil {

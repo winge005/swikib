@@ -43,6 +43,7 @@ func main() {
 
 	http.HandleFunc("POST /swiki/abbreviation", handlers.AbbreviationAddHandler)
 	http.HandleFunc("GET /swiki/abbreviation/{fl}", handlers.AbbreviationHandler)
+	http.HandleFunc("DELETE /swiki/abbreviation/{fl}", handlers.AbbreviationDelete)
 
 	http.HandleFunc("POST /swiki/search", handlers.SearchHandler)
 

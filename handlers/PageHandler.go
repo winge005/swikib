@@ -87,10 +87,10 @@ func PageAddHandler(w http.ResponseWriter, r *http.Request) {
 	var page model.Page
 	r.ParseForm()
 
-	category := r.FormValue("category")
-	newCategory := r.FormValue("newcategory")
-	title := r.FormValue("title")
-	content := r.FormValue("mdcontent")
+	category := helpers.RemoveSpacesBeforAndAfter(r.FormValue("category"))
+	newCategory := helpers.RemoveSpacesBeforAndAfter(r.FormValue("newcategory"))
+	title := helpers.RemoveSpacesBeforAndAfter(r.FormValue("title"))
+	content := helpers.RemoveSpacesBeforAndAfter(r.FormValue("mdcontent"))
 	tmpl, err := template.ParseFiles("templates/pageaddonsuccess.html")
 
 	var errorMessage = ""
@@ -406,5 +406,3 @@ func PageCategoriesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println("categories")
 }
-
-//412
