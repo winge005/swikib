@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"swiki/ai"
 	"swiki/handlers"
 	"swiki/model"
 	"swiki/persistence"
@@ -49,6 +50,13 @@ func main() {
 
 	fs := http.FileServer(http.Dir("./frontend"))
 	http.Handle("/", fs)
+
+	a, b := ai.AskQuestion("What is a corydoras")
+	if b != nil {
+		log.Printf("Error asking question: %v\n", b)
+	} else {
+		log.Printf("AI response: %s\n", a)
+	}
 
 	// go images.CheckUneededImages()
 	// persistence.Play()
