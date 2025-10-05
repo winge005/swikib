@@ -7,21 +7,21 @@ import (
 
 func GetCurrentDateTime() string {
 	currentTime := time.Now()
-	day := convertTwoDigits(strconv.Itoa(currentTime.Day()))
-	month := convertTwoDigits(strconv.Itoa(int(currentTime.Month())))
+	day := ConvertTwoDigits(strconv.Itoa(currentTime.Day()))
+	month := ConvertTwoDigits(strconv.Itoa(int(currentTime.Month())))
 	year := strconv.Itoa(currentTime.Year())
 
-	hour := convertTwoDigits(strconv.Itoa(currentTime.Hour()))
-	minute := convertTwoDigits(strconv.Itoa(currentTime.Minute()))
-	sec := convertTwoDigits(strconv.Itoa(currentTime.Second()))
+	hour := ConvertTwoDigits(strconv.Itoa(currentTime.Hour()))
+	minute := ConvertTwoDigits(strconv.Itoa(currentTime.Minute()))
+	sec := ConvertTwoDigits(strconv.Itoa(currentTime.Second()))
 
 	return day + "-" + month + "-" + year + " " + hour + ":" + minute + ":" + sec
 }
 
 func GetCurrentDate() string {
 	currentTime := time.Now()
-	day := convertTwoDigits(strconv.Itoa(currentTime.Day()))
-	month := convertTwoDigits(strconv.Itoa(int(currentTime.Month())))
+	day := ConvertTwoDigits(strconv.Itoa(currentTime.Day()))
+	month := ConvertTwoDigits(strconv.Itoa(int(currentTime.Month())))
 	year := strconv.Itoa(currentTime.Year())
 	return day + "-" + month + "-" + year
 
@@ -29,17 +29,24 @@ func GetCurrentDate() string {
 
 func GetCurrentTime() string {
 	currentTime := time.Now()
-	hour := convertTwoDigits(strconv.Itoa(currentTime.Hour()))
-	minute := convertTwoDigits(strconv.Itoa(currentTime.Minute()))
-	sec := convertTwoDigits(strconv.Itoa(currentTime.Second()))
+	hour := ConvertTwoDigits(strconv.Itoa(currentTime.Hour()))
+	minute := ConvertTwoDigits(strconv.Itoa(currentTime.Minute()))
+	sec := ConvertTwoDigits(strconv.Itoa(currentTime.Second()))
 	return hour + ":" + minute + ":" + sec
 }
 
-func convertTwoDigits(input string) string {
+func ConvertTwoDigits(input string) string {
 	if len(input) < 2 {
 		return "0" + input
 	}
 	return input
+}
+
+func ConvertIntToTwoDigitsString(input int) string {
+	if input < 10 {
+		return "0" + strconv.Itoa(input)
+	}
+	return strconv.Itoa(input)
 }
 
 func Last11Days() []string {

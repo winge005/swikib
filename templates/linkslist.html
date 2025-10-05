@@ -1,8 +1,0 @@
-{{ range . }}
-  <li class="list-group-item" id="content"><button type="button" class="btn btn-primary" hx-target="#content" hx-get="/swiki/links/update/{{ .Id}}" hx-swap="innerHTML">E</button> <button type="button" hx-confirm="Are you sure you wish to delete this Link?" hx-delete="/swiki/links/{{ .Id }}" class="btn btn-danger me-4" (click)="edit({{ .Id }})" hx-swap="innerHTML">D</button>
-  <a target="_blank" href="{{ .Url }}">{{ .Description }}</a> &nbsp<i>{{ .Created }}</i>
-  </li>
-{{ end }}
-
-
-

@@ -2,6 +2,7 @@ package search
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"strings"
 	"swiki/model"
@@ -30,8 +31,8 @@ var stopwords = map[string]struct{}{
 
 func CreateIndex() {
 	var docs []model.Document
+
 	start := time.Now()
-	//query := "ExtendedReceiveDataMessageResponse"
 
 	categories, err := persistence.GetCategories()
 	if err != nil {
@@ -40,17 +41,13 @@ func CreateIndex() {
 	}
 
 	for _, category := range categories {
-		pages, err := persistence.GetPagesFromCategoryWithoutContent(category)
+		pages, err := persistence.GetPagesFromCategoryWithContent(category)
 		if err != nil {
 			log.Println("Error getting categories: ", err)
 			log.Fatal(err)
 		}
-		for index, page := range pages {
-			p, err := persistence.GetPage(page.Id)
-			if err != nil {
-			}
-			doc := model.Document{Title: p.Title, Text: p.Content, ID: index, DbId: p.Id}
-			docs = append(docs, doc)
+		for _, page := range pages {
+			fmt.Println(page.Content)
 		}
 	}
 

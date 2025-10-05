@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"swiki/helpers"
 	"swiki/model"
 	"swiki/persistence"
@@ -23,18 +26,20 @@ func LinksGetCategoriesHandlerr(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl, err := template.ParseFiles("templates/linkscategories.html")
+	var response []string
+
+	for _, category := range categories {
+		response = append(response, category)
+	}
+
+	responseJson, err := json.Marshal(response)
 	if err != nil {
-		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	err = tmpl.Execute(w, categories)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+
+	helpers.WriteResponse(w, string(responseJson))
+
 }
 
 func LinksFromCategoryHandler(w http.ResponseWriter, r *http.Request) {
@@ -52,18 +57,37 @@ func LinksFromCategoryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl, err := template.ParseFiles("templates/linkslist.html")
+	responseJson, err := json.Marshal(links)
 	if err != nil {
-		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	err = tmpl.Execute(w, links)
+
+	helpers.WriteResponse(w, string(responseJson))
+
+}
+
+func LinkViewHandler(w http.ResponseWriter, r *http.Request) {
+	helpers.EnableCors(&w)
+	if (*r).Method == http.MethodOptions {
+		_, _ = w.Write([]byte("allowed"))
+		return
+	}
+
+	id := r.PathValue("id")
+	idInt, err := strconv.Atoi(id)
 	if err != nil {
-		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	link, err := persistence.GetLink(idInt)
+	responseJson, err := json.Marshal(link)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	helpers.WriteResponse(w, string(responseJson))
 }
 
 func LinkEditeHandler(w http.ResponseWriter, r *http.Request) {
@@ -135,7 +159,10 @@ func LinkDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "http://localhost:5001/links.html", http.StatusSeeOther)
+	var response = model.ResponseMessage{Message: "Deleted: " + strconv.Itoa(idInt)}
+	responseJson, err := json.Marshal(response)
+
+	helpers.WriteResponse(w, string(responseJson))
 
 }
 
@@ -173,103 +200,43 @@ func LinkAddHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("LinkAddHandler")
+	bd, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("%s", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	var link model.Link
+	err = json.Unmarshal(bd, &link)
 
-	r.ParseForm()
-
-	description := r.FormValue("description")
-	category := r.FormValue("category")
-	newCategory := r.FormValue("newcategory")
-	url := r.FormValue("url")
-
-	link.Description = description
-	link.Url = url
-	if category == "Select category" {
-		category = ""
-	}
-
-	var errorMessage = ""
-	if len(category) > 0 && len(newCategory) > 0 {
-		errorMessage = "category and newCategory may not be filled both\n"
-	}
-
-	if len(description) == 0 {
-		errorMessage = "description is not filled\n"
-	}
-
-	if len(url) == 0 {
-		errorMessage = "Url must be filled\n"
-	}
-
-	if len(category) > 0 {
-		link.Category = category
-	}
-	if len(newCategory) > 0 {
-		link.Category = newCategory
-	}
-
-	tmpl, err := template.ParseFiles("templates/linkaddresponse.html")
-	if err != nil || len(errorMessage) > 0 {
-		if err != nil {
-			errorMessage = err.Error()
-		}
-		data := struct {
-			Link         model.Link
-			ErrorMessage string
-			Message      string
-		}{
-			Link:         link,
-			ErrorMessage: errorMessage,
-			Message:      "Something wrong with the template",
-		}
-		err = tmpl.Execute(w, data)
+	if len(link.Category) < 1 {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if persistence.LinkExist(link.Url) {
-		errorMessage = "Link already exists"
-		data := struct {
-			Link         model.Link
-			ErrorMessage string
-			Message      string
-		}{
-			Link:         link,
-			ErrorMessage: errorMessage,
-			Message:      "",
-		}
-		err = tmpl.Execute(w, data)
+	if len(link.Description) < 1 {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if len(errorMessage) == 0 {
-		addedRecordId, err := persistence.AddLink(link)
-		if err != nil {
-			errorMessage = err.Error()
-			data := struct {
-				Link         model.Link
-				ErrorMessage string
-				Message      string
-			}{
-				Link:         link,
-				ErrorMessage: err.Error(),
-				Message:      "",
-			}
-			err = tmpl.Execute(w, data)
-			return
-		}
-		data := struct {
-			Link         model.Link
-			ErrorMessage string
-			Message      string
-		}{
-			Link:         link,
-			ErrorMessage: "",
-			Message:      "Added link Id: " + strconv.Itoa(addedRecordId),
-		}
-		err = tmpl.Execute(w, data)
+	if len(link.Url) < 1 {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
+
+	link.Category = strings.ToLower(link.Category)
+
+	id, err := persistence.AddLink(link)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var response = model.ResponseMessage{Message: "added: " + strconv.Itoa(id)}
+	responseJson, err := json.Marshal(response)
+
+	helpers.WriteResponse(w, string(responseJson))
 }
 
 func LinkUpdateHandler(w http.ResponseWriter, r *http.Request) {
@@ -287,42 +254,43 @@ func LinkUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	oldLink, err := persistence.GetLink(idInt)
+	bd, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("%s", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var link model.Link
+	err = json.Unmarshal(bd, &link)
+
+	if len(link.Category) < 1 {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if len(link.Description) < 1 {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if len(link.Url) < 1 {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if link.Id < 1 || link.Id != idInt {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	link.Category = strings.ToLower(link.Category)
+
+	err = persistence.UpdateLink(link)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	r.ParseForm()
-
-	if len(r.FormValue("category")) > 0 && len(r.FormValue("newcategory")) > 0 {
-		log.Printf("%s", "category and newCategory can't be filled both")
-		http.Error(w, err.Error(), http.StatusConflict)
-		return
-	}
-
-	var category string
-	if len(r.FormValue("newcategory")) > 0 {
-		category = r.FormValue("newcategory")
-	} else {
-		category = r.FormValue("category")
-	}
-
-	intId, err := strconv.Atoi(id)
-	if err != nil {
-		log.Printf("%s", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	newLink := model.Link{Id: intId, Description: r.FormValue("description"), Url: r.FormValue("url"), Created: oldLink.Created, Category: category}
-
-	if newLink.Description == oldLink.Description && newLink.Url == oldLink.Url && newLink.Category == oldLink.Category {
-		helpers.WriteResponse(w, "Nothing updated, all the same")
-	}
-
-	persistence.UpdateLink(newLink)
-
-	helpers.WriteResponse(w, "<a hx-get=\"/swiki/links/categorie/"+category+"\" hx-swap=\"innerHTML\">Show list</a> ")
+	helpers.WriteResponse(w, "")
 }

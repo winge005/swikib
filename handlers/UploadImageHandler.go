@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"bytes"
-	"fmt"
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"swiki/helpers"
 	"swiki/persistence"
@@ -18,41 +19,110 @@ func UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, fileHeader, err := r.FormFile("file")
+	uploaded := make(map[string]string)
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "only POST allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	log.Printf("Content-Type: %s", r.Header.Get("Content-Type"))
+
+	const maxUpload = 64 << 20 // 64MB for testing
+	r.Body = http.MaxBytesReader(w, r.Body, maxUpload)
+
+	if err := r.ParseMultipartForm(maxUpload); err != nil {
+		http.Error(w, "ParseMultipartForm error: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if r.MultipartForm == nil {
+		http.Error(w, "no multipart form present", http.StatusBadRequest)
+		return
+	}
+
+	files := r.MultipartForm.File["files"]
+	if len(files) == 0 {
+		http.Error(w, "no files uploaded under key 'files'", http.StatusBadRequest)
+		return
+	}
+
+	for _, fh := range files {
+		file, err := fh.Open()
+		if err != nil {
+			http.Error(w, "cannot open part: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		defer file.Close()
+
+		name := filepath.Base(fh.Filename)
+		if !checkValidExtension(name) {
+			uploaded[name] = "extension not allowed"
+			continue
+		}
+
+		buf := bytes.NewBuffer(nil)
+		if _, err := io.Copy(buf, file); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		result := persistence.AddImage(name, buf.Bytes())
+		if !result {
+			http.Error(w, "{errorText: 'saving image has failed'}", http.StatusBadRequest)
+			return
+		}
+
+		uploaded[name] = "ok"
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	response, err := json.Marshal(uploaded)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	if err := r.ParseForm(); err != nil {
-		fmt.Fprintf(w, "ParseForm() err: %v", err)
-		return
-	}
-
-	fileName := fileHeader.Filename
-	if !checkValidExtension(fileName) {
-		http.Error(w, "{errorText: 'File must be an image'}", http.StatusBadRequest)
-		return
-	}
-
-	defer file.Close()
-
-	buf := bytes.NewBuffer(nil)
-	if _, err := io.Copy(buf, file); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	log.Println(fileName)
+	helpers.WriteResponse(w, string(response))
 
-	result := persistence.AddImage(fileName, buf.Bytes())
-
-	if !result {
-		http.Error(w, "{errorText: 'saving image has failed'}", http.StatusBadRequest)
-		return
-	}
-
-	fmt.Fprintf(w, "Upload succeeded")
+	//file, fileHeader, err := r.FormFile("files")
+	//if err != nil {
+	//	http.Error(w, err.Error(), http.StatusBadRequest)
+	//	return
+	//}
+	//
+	//if err := r.ParseForm(); err != nil {
+	//	fmt.Fprintf(w, "ParseForm() err: %v", err)
+	//	return
+	//}
+	//
+	//fileName := fileHeader.Filename
+	//if !checkValidExtension(fileName) {
+	//	http.Error(w, "{errorText: 'File must be an image'}", http.StatusBadRequest)
+	//	return
+	//}
+	//
+	//defer file.Close()
+	//
+	//buf := bytes.NewBuffer(nil)
+	//if _, err := io.Copy(buf, file); err != nil {
+	//	http.Error(w, err.Error(), http.StatusInternalServerError)
+	//	return
+	//}
+	//
+	//log.Println(fileName)
+	//
+	//result := persistence.AddImage(fileName, buf.Bytes())
+	//
+	//if !result {
+	//	http.Error(w, "{errorText: 'saving image has failed'}", http.StatusBadRequest)
+	//	return
+	//}
+	//
+	//fmt.Fprintf(w, "Upload succeeded")
+	//var response = model.ResponseMessage{Message: "Uploaded: " + fileName}
+	//responseJson, err := json.Marshal(response)
+	//
+	//
 
 }
 

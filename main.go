@@ -2,16 +2,16 @@ package main
 
 import (
 	"context"
-	"gopkg.in/yaml.v2"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"swiki/ai"
 	"swiki/handlers"
 	"swiki/model"
 	"swiki/persistence"
 	"syscall"
+
+	"gopkg.in/yaml.v2"
 )
 
 var config = &model.Config{}
@@ -22,44 +22,58 @@ func main() {
 	persistence.SetConfig(config.Server.AccessToken)
 	persistence.CreateTables()
 
-	http.HandleFunc("GET /swiki/page/categories", handlers.PageHandler)
-	http.HandleFunc("GET /swiki/page/categoriesasoptions", handlers.PageCategoriesAsOptionsHandler)
-	http.HandleFunc("GET /swiki/page/categories/{category}", handlers.PageCategoriesHandler)
-	http.HandleFunc("GET /swiki/page/{id}", handlers.PageViewHandler)
-	http.HandleFunc("GET /swiki/page/update/{id}", handlers.PageEditHandler)
-	http.HandleFunc("PUT /swiki/page/{id}", handlers.PageUpdateHandler)
-	http.HandleFunc("DELETE /swiki/page/{id}", handlers.PageDeleteHandler)
-	http.HandleFunc("POST /swiki/page", handlers.PageAddHandler)
+	// pages
+	http.HandleFunc("GET /swiki/pages/categories", handlers.PageHandlerGetCategories)
+	http.HandleFunc("GET /swiki/pages/categories/{category}", handlers.PageCategoriesHandler)
+	http.HandleFunc("GET /swiki/pages/{id}", handlers.PageViewHandler)
+	http.HandleFunc("PUT /swiki/pages/{id}", handlers.PageUpdateHandler)
+	http.HandleFunc("DELETE /swiki/pages/{id}", handlers.PageDeleteHandler)
+	http.HandleFunc("POST /swiki/pages", handlers.PageAddHandler)
 	http.HandleFunc("POST /swiki/page/preview", handlers.PreviewHandler)
-	http.HandleFunc("GET /swiki/pages/image/", handlers.ImageHandler)
+	http.HandleFunc("GET /swiki/pages/image", handlers.ImageHandler)
 	http.HandleFunc("POST /swiki/pages/uploadImage", handlers.UploadImageHandler)
+	http.HandleFunc("GET /swiki/pages/created", handlers.SpecialsHandler)
+	http.HandleFunc("GET /swiki/pages/exist/{title}", handlers.PageAlreadyUsedHandler)
 
+	// prepages
+	http.HandleFunc("GET /swiki/prepages", handlers.PrePageGetAllHandler)
+	http.HandleFunc("DELETE /swiki/prepages/{id}", handlers.PrePageDeleteHandler)
+	http.HandleFunc("POST /swiki/prepages", handlers.PrePageAddHandler)
+
+	// links
 	http.HandleFunc("GET /swiki/links/categories", handlers.LinksGetCategoriesHandlerr)
 	http.HandleFunc("GET /swiki/links/categoriesoptions", handlers.LinksCategoryOptionsHandler)
 	http.HandleFunc("GET /swiki/links/categorie/{category}", handlers.LinksFromCategoryHandler)
 	http.HandleFunc("GET /swiki/links/update/{id}", handlers.LinkEditeHandler)
-	http.HandleFunc("PUT /swiki/links/update/{id}", handlers.LinkUpdateHandler)
+	http.HandleFunc("PUT /swiki/links/{id}", handlers.LinkUpdateHandler)
 	http.HandleFunc("POST /swiki/links", handlers.LinkAddHandler)
+	http.HandleFunc("GET /swiki/links/{id}", handlers.LinkViewHandler)
 	http.HandleFunc("DELETE /swiki/links/{id}", handlers.LinkDeleteHandler)
 
+	// abbreviations
 	http.HandleFunc("POST /swiki/abbreviation", handlers.AbbreviationAddHandler)
 	http.HandleFunc("GET /swiki/abbreviation/{fl}", handlers.AbbreviationHandler)
 	http.HandleFunc("DELETE /swiki/abbreviation/{fl}", handlers.AbbreviationDelete)
+
+	// options
+	http.HandleFunc("OPTIONS /swiki/pages/{id}", handlers.PagePreflightHandler)
+	http.HandleFunc("OPTIONS /swiki/pages", handlers.PagePreflightHandler)
+	http.HandleFunc("OPTIONS /swiki/links/{id}", handlers.PagePreflightHandler)
+	http.HandleFunc("OPTIONS /swiki/links", handlers.PagePreflightHandler)
+	http.HandleFunc("OPTIONS /swiki/prepages", handlers.PagePreflightHandler)
+	http.HandleFunc("OPTIONS /swiki/prepages/{id}", handlers.PagePreflightHandler)
+	http.HandleFunc("OPTIONS /swiki/abbreviation", handlers.PagePreflightHandler)
+	http.HandleFunc("OPTIONS /swiki/pages/exist/{title}", handlers.PagePreflightHandler)
 
 	http.HandleFunc("POST /swiki/search", handlers.SearchHandler)
 
 	fs := http.FileServer(http.Dir("./frontend"))
 	http.Handle("/", fs)
 
-	a, b := ai.AskQuestion("What is a corydoras")
-	if b != nil {
-		log.Printf("Error asking question: %v\n", b)
-	} else {
-		log.Printf("AI response: %s\n", a)
-	}
-
 	// go images.CheckUneededImages()
-	// persistence.Play()
+	//persistence.Play()
+
+	//search.CreateIndex()
 
 	srv := http.Server{}
 	sigs := make(chan os.Signal, 1)

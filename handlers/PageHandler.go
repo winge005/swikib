@@ -1,9 +1,8 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/gomarkdown/markdown"
-	"github.com/gomarkdown/markdown/html"
 	"io"
 	"log"
 	"net/http"
@@ -12,68 +11,11 @@ import (
 	"swiki/helpers"
 	"swiki/model"
 	"swiki/persistence"
-	"text/template"
 	"time"
+
+	"github.com/gomarkdown/markdown"
+	"github.com/gomarkdown/markdown/html"
 )
-
-func PageHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
-	if (*r).Method == http.MethodOptions {
-		_, _ = w.Write([]byte("allowed"))
-		return
-	}
-
-	fmt.Printf("Request at %v\n", time.Now())
-	for k, v := range r.Header {
-		fmt.Printf("%v: %v\n", k, v)
-	}
-
-	categories, err := persistence.GetCategories()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	tmpl, err := template.ParseFiles("templates/categories.html")
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	err = tmpl.Execute(w, categories)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func PageCategoriesAsOptionsHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
-	if (*r).Method == http.MethodOptions {
-		_, _ = w.Write([]byte("allowed"))
-		return
-	}
-
-	categories, err := persistence.GetCategories()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	tmpl, err := template.ParseFiles("templates/categoriesasoptions.html")
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	err = tmpl.Execute(w, categories)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
 
 func PageAddHandler(w http.ResponseWriter, r *http.Request) {
 	helpers.EnableCors(&w)
@@ -82,117 +24,50 @@ func PageAddHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("PageAddHandler")
+	bd, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("%s", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	var page model.Page
-	r.ParseForm()
+	err = json.Unmarshal(bd, &page)
 
-	category := helpers.RemoveSpacesBeforAndAfter(r.FormValue("category"))
-	newCategory := helpers.RemoveSpacesBeforAndAfter(r.FormValue("newcategory"))
-	title := helpers.RemoveSpacesBeforAndAfter(r.FormValue("title"))
-	content := helpers.RemoveSpacesBeforAndAfter(r.FormValue("mdcontent"))
-	tmpl, err := template.ParseFiles("templates/pageaddonsuccess.html")
-
-	var errorMessage = ""
-	if len(category) > 0 && len(newCategory) > 0 {
-		errorMessage = "category and newCategory may not be filled both\n"
-	}
-
-	if len(category) == 0 && len(newCategory) == 0 {
-		errorMessage = "category not be filled\n"
-	}
-
-	if len(title) == 0 {
-		errorMessage = "title is not filled\n"
-	}
-
-	if len(content) == 0 {
-		errorMessage = "Content must be filled\n"
-	}
-
-	title = helpers.Trim(title)
-	category = helpers.Trim(category)
-	content = helpers.Trim(content)
-
-	page.Category = category
-	if len(newCategory) > 0 {
-		page.Category = newCategory
-	}
-
-	if len(errorMessage) == 0 {
-		page.Title = title
-		page.Content = content
-
-		if persistence.IsPageTitleUsed(page.Title) {
-			errorMessage = "Title already used"
-			tmpl, err = template.ParseFiles("templates/pageaddonerror.html")
-			data := struct {
-				Page         model.Page
-				ErrorMessage string
-			}{
-				Page:         page,
-				ErrorMessage: errorMessage,
-			}
-			err = tmpl.Execute(w, data)
-			return
-		}
-
-		id, err := persistence.AddPage(page)
-		if err != nil {
-			errorMessage = err.Error()
-			tmpl, err = template.ParseFiles("templates/pageaddonerror.html")
-			data := struct {
-				Page         model.Page
-				ErrorMessage string
-			}{
-				Page:         page,
-				ErrorMessage: errorMessage,
-			}
-			err = tmpl.Execute(w, data)
-			return
-		}
-		page.Id = 0
-		page.Title = ""
-		page.Category = ""
-		page.Content = ""
-		page.Created = ""
-		page.Updated = ""
-		data := struct {
-			Page model.Page
-			Id   int
-		}{
-			Page: page,
-			Id:   id,
-		}
-		err = tmpl.Execute(w, data)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+	if len(page.Title) == 0 {
+		http.Error(w, "title is not filled", http.StatusInternalServerError)
 		return
 	}
 
+	if len(page.Category) == 0 {
+		http.Error(w, "category is not filled", http.StatusInternalServerError)
+		return
+	}
+
+	if len(page.Content) == 0 {
+		http.Error(w, "content is not filled", http.StatusInternalServerError)
+		return
+	}
+
+	page.Category = strings.ToLower(page.Category)
+
+	page.Title = strings.TrimSpace(page.Title)
+	page.Content = strings.TrimSpace(page.Content)
+
+	if persistence.IsPageTitleUsed(page.Title) {
+		http.Error(w, "Title already used", http.StatusInternalServerError)
+		return
+	}
+	id, err := persistence.AddPage(page)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	tmpl, err = template.ParseFiles("templates/pageaddonerror.html")
-	page.Title = title
-	page.Content = content
 
-	data := struct {
-		Page         model.Page
-		ErrorMessage string
-	}{
-		Page:         page,
-		ErrorMessage: errorMessage,
-	}
+	var response = model.ResponseMessage{Message: "added: " + strconv.Itoa(id)}
+	responseJson, err := json.Marshal(response)
 
-	err = tmpl.Execute(w, data)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	helpers.WriteResponse(w, string(responseJson))
 }
 
 func PageUpdateHandler(w http.ResponseWriter, r *http.Request) {
@@ -203,37 +78,25 @@ func PageUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := r.PathValue("id")
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		log.Printf("%s", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	bd, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("%s", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	splittedData := strings.Split(string(bd), "&")
+
 	var page model.Page
-	idInt, err := strconv.Atoi(id)
+	err = json.Unmarshal(bd, &page)
 
 	page.Id = idInt
-	var oldCategory string
-
-	for _, kv := range splittedData {
-		kvs := strings.Split(kv, "=")
-		if kvs[0] == "category" {
-			if len(kvs[1]) > 0 {
-				page.Category = helpers.RemoveUrlEncoding(kvs[1])
-			}
-		} else if kvs[0] == "newcategory" {
-			if len(kvs[1]) > 0 {
-				page.Category = helpers.RemoveUrlEncoding(kvs[1])
-			}
-		} else if kvs[0] == "title" {
-			page.Title = helpers.RemoveUrlEncoding(kvs[1])
-		} else if kvs[0] == "mdcontent" {
-			page.Content = helpers.RemoveUrlEncoding(kvs[1])
-		} else if kvs[0] == "oldcategory" {
-			oldCategory = helpers.RemoveUrlEncoding(kvs[1])
-		}
-	}
+	page.Category = strings.ToLower(page.Category)
 
 	err = persistence.UpdatePage(page)
 	if err != nil {
@@ -242,54 +105,7 @@ func PageUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	returnVal := "<div class=\"alert alert-primary\" role=\"alert\">\n<button class=\"btn btn-outline-success\" type=\"button\" hx-target=\"#content\" hx-get=\"/swiki/page/categories/$oldcategory$\">\n              <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"currentColor\" class=\"bi bi-arrow-left-square\" viewBox=\"0 0 16 16\">\n                <path fill-rule=\"evenodd\" d=\"M15 2a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1zM0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm11.5 5.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5z\"/>\n              </svg>\n            </button> Updated</div>\n"
-	returnVal = strings.Replace(returnVal, "$oldcategory$", oldCategory, -1)
-	helpers.WriteResponse(w, returnVal)
-}
-
-func PageEditHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
-	if (*r).Method == http.MethodOptions {
-		_, _ = w.Write([]byte("allowed"))
-		return
-	}
-
-	log.Println("PageEditHandler")
-	id := r.PathValue("id")
-	idGiven, err := strconv.Atoi(id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-
-	page, err := persistence.GetPage(idGiven)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-	categorien, err := persistence.GetCategories()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-
-	tmpl, err := template.ParseFiles("templates/pageedit.html")
-	if tmpl == nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	data := struct {
-		Page       model.Page
-		Categorien []string
-	}{
-		Page:       page,
-		Categorien: categorien,
-	}
-
-	err = tmpl.Execute(w, data)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	helpers.WriteResponse(w, "")
 }
 
 func PageDeleteHandler(w http.ResponseWriter, r *http.Request) {
@@ -314,7 +130,10 @@ func PageDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "http://localhost:5001/pages.html", http.StatusSeeOther)
+	var response = model.ResponseMessage{Message: "Deleted: " + strconv.Itoa(idInt)}
+	responseJson, err := json.Marshal(response)
+
+	helpers.WriteResponse(w, string(responseJson))
 }
 
 func PageViewHandler(w http.ResponseWriter, r *http.Request) {
@@ -345,24 +164,13 @@ func PageViewHandler(w http.ResponseWriter, r *http.Request) {
 		replaceImageTags(imagesFound, &page.Content)
 	}
 
-	tmpl, err := template.ParseFiles("templates/pageview.html")
-	if tmpl == nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	data := struct {
-		Page model.Page
-	}{
-		Page: page,
-	}
-
-	err = tmpl.Execute(w, data)
+	response, err := json.Marshal(page)
 	if err != nil {
-		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	helpers.WriteResponse(w, string(response))
 }
 
 // TODO: make this react on config
@@ -387,22 +195,151 @@ func PageCategoriesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	response, err := json.Marshal(pages)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	tmpl, err := template.ParseFiles("templates/pageslist.html")
-	if tmpl == nil {
+	helpers.WriteResponse(w, string(response))
+}
+
+func PageHandlerGetCategories(w http.ResponseWriter, r *http.Request) {
+	helpers.EnableCors(&w)
+	if (*r).Method == http.MethodOptions {
+		_, _ = w.Write([]byte("allowed"))
+		return
+	}
+
+	fmt.Printf("Request at %v\n", time.Now())
+	for k, v := range r.Header {
+		fmt.Printf("%v: %v\n", k, v)
+	}
+
+	categories, err := persistence.GetCategories()
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err = tmpl.Execute(w, pages)
+	var response []string
+
+	for _, category := range categories {
+		response = append(response, category)
+	}
+
+	responseJson, err := json.Marshal(response)
 	if err != nil {
-		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Println("categories")
+
+	helpers.WriteResponse(w, string(responseJson))
+}
+
+func PrePageAddHandler(w http.ResponseWriter, r *http.Request) {
+	helpers.EnableCors(&w)
+	if (*r).Method == http.MethodOptions {
+		_, _ = w.Write([]byte("allowed"))
+		return
+	}
+
+	bd, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("%s", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var prePage model.PrePage
+	err = json.Unmarshal(bd, &prePage)
+
+	if len(prePage.Url) == 0 {
+		http.Error(w, "title is not filled", http.StatusInternalServerError)
+		return
+	}
+
+	err = persistence.AddPrePage(prePage.Url)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var response = model.ResponseMessage{Message: "added"}
+	responseJson, err := json.Marshal(response)
+
+	helpers.WriteResponse(w, string(responseJson))
+}
+
+func PrePageGetAllHandler(w http.ResponseWriter, r *http.Request) {
+	helpers.EnableCors(&w)
+	if (*r).Method == http.MethodOptions {
+		_, _ = w.Write([]byte("allowed"))
+		return
+	}
+
+	prePages, err := persistence.GetAllPrePages()
+
+	responseJson, err := json.Marshal(prePages)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if len(responseJson) == 0 {
+		helpers.WriteResponse(w, "")
+		return
+	}
+
+	helpers.WriteResponse(w, string(responseJson))
+
+}
+
+func PrePageDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	helpers.EnableCors(&w)
+	if (*r).Method == http.MethodOptions {
+		_, _ = w.Write([]byte("allowed"))
+		return
+	}
+
+	id := r.PathValue("id")
+	idNumber, _ := strconv.Atoi(id)
+
+	err := persistence.DeletePrePage(idNumber)
+	if err != nil {
+		log.Printf("%s", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var response = model.ResponseMessage{Message: "Deleted: " + id}
+	responseJson, err := json.Marshal(response)
+
+	helpers.WriteResponse(w, string(responseJson))
+}
+
+func PageAlreadyUsedHandler(w http.ResponseWriter, r *http.Request) {
+	helpers.EnableCors(&w)
+	if (*r).Method == http.MethodOptions {
+		_, _ = w.Write([]byte("allowed"))
+		return
+	}
+
+	title := r.PathValue("title")
+
+	used := false
+	title = strings.TrimSpace(title)
+
+	if persistence.IsPageTitleUsed(title) {
+		used = true
+	}
+
+	var response = model.ResponseMessage{Message: strconv.FormatBool(used)}
+	responseJson, err := json.Marshal(response)
+	if err != nil {
+		log.Printf("%s", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	helpers.WriteResponse(w, string(responseJson))
 }

@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -17,10 +18,11 @@ func EnableCors(w *http.ResponseWriter) {
 	(*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, PATCH")
 	(*w).Header().Set("Access-Control-Allow-Headers", allowedHeaders)
 	(*w).Header().Add("Access-Control-Allow-Credentials", "true")
+
 }
 
 func WriteResponse(w http.ResponseWriter, response string) {
-	_, _ = fmt.Fprintf(w, response)
+	_, _ = io.WriteString(w, response)
 }
 
 func BooleanConvertor(value string) bool {

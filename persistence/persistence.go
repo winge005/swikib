@@ -19,6 +19,7 @@ var abbreviations = "CREATE TABLE IF NOT EXISTS abbreviations(id INTEGER PRIMARY
 var links = "CREATE TABLE IF NOT EXISTS links(id INTEGER PRIMARY KEY, category varchar(100), url varchar(300) UNIQUE, description varchar(250), created varchar(19), updated varchar(19))"
 var pages = "CREATE TABLE IF NOT EXISTS pages(id INTEGER, category varchar(200), title varchar(255), content TEXT, created varchar(19), updated varchar(19))"
 var pictures = "CREATE TABLE IF NOT EXISTS pictures(id varchar(200), image BLOB, created varchar(19), updated varchar(19))"
+var prePages = "CREATE TABLE IF NOT EXISTS prepages(id INTEGER PRIMARY KEY, url varchar(300) UNIQUE, created varchar(19))"
 
 var abbreviationsInCache = make(map[string][]model.Abbreviation)
 
@@ -33,6 +34,8 @@ func CreateTables() {
 		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
 		os.Exit(1)
 	}
+
+	defer database.Close()
 
 	_, err = database.Exec(abbreviations)
 	if err != nil {
@@ -53,6 +56,11 @@ func CreateTables() {
 	if err != nil {
 		return
 	}
+
+	_, err = database.Exec(prePages)
+	if err != nil {
+		return
+	}
 }
 
 func GetCategories() ([]string, error) {
@@ -63,6 +71,7 @@ func GetCategories() ([]string, error) {
 		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
 		return categories, err
 	}
+
 	rows, err := database.Query("select DISTINCT category from pages order by category")
 	if err != nil {
 		log.Println(err.Error())
@@ -86,6 +95,44 @@ func GetCategories() ([]string, error) {
 	return categories, nil
 }
 
+func GetPagesFromCategoryWithContent(whereCategory string) ([]model.Page, error) {
+	var pages []model.Page
+
+	database, err := sql.Open("libsql", urlTurso)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
+		return pages, err
+	}
+
+	rows, _ := database.Query("select id, title, category, content, created, updated from pages where category=?  order by title COLLATE NOCASE ASC", whereCategory)
+
+	defer rows.Close()
+	defer database.Close()
+
+	var id int
+	var title string
+	var category string
+	var content string
+	var created string
+	var updated string
+
+	for rows.Next() {
+		err := rows.Scan(&id, &title, &category, &content, &created, &updated)
+		if err != nil {
+			return nil, err
+		}
+		var page model.Page
+		page.Id = id
+		page.Title = title
+		page.Category = category
+		page.Content = content
+		page.Created = created
+		page.Updated = updated
+		pages = append(pages, page)
+	}
+	return pages, nil
+}
+
 func GetPagesFromCategoryWithoutContent(whereCategory string) ([]model.Page, error) {
 	var pages []model.Page
 
@@ -95,31 +142,34 @@ func GetPagesFromCategoryWithoutContent(whereCategory string) ([]model.Page, err
 		return pages, err
 	}
 
-	rows, _ := database.Query("select id, title, category, created, updated from pages where category=?  order by title COLLATE NOCASE ASC", whereCategory)
+	rows, _ := database.Query("select id, title, created, updated from pages where category=?  order by title COLLATE NOCASE ASC", whereCategory)
 
 	defer rows.Close()
 	defer database.Close()
 
 	var id int
 	var title string
-	var category string
 	var created string
 	var updated string
 
 	for rows.Next() {
-		err := rows.Scan(&id, &title, &category, &created, &updated)
+		err := rows.Scan(&id, &title, &created, &updated)
 		if err != nil {
 			return nil, err
 		}
 		var page model.Page
 		page.Id = id
 		page.Title = title
-		page.Category = category
 		page.Content = ""
 		page.Created = created
 		page.Updated = updated
 		pages = append(pages, page)
 	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return pages, nil
 }
 
@@ -192,7 +242,7 @@ func GetPageFromOffset(recordTh int) (model.Page, error) {
 func IsPageTitleUsed(titleGiven string) bool {
 
 	database, _ := sql.Open("libsql", urlTurso)
-	rows, _ := database.Query("SELECT id, category FROM pages where title=?;", titleGiven)
+	rows, _ := database.Query("SELECT id, category FROM pages where LOWER(title)=?;", titleGiven)
 
 	defer rows.Close()
 	defer database.Close()
@@ -260,6 +310,8 @@ func UpdatePage(newPage model.Page) error {
 		return err
 	}
 	defer stmt.Close()
+
+	newPage.Category = strings.ToLower(newPage.Category)
 
 	res, err := stmt.Exec(newPage.Category, newPage.Title, newPage.Content, helpers.GetCurrentDateTime(), newPage.Id)
 	if err != nil {
@@ -376,6 +428,55 @@ func GetPageByQuery(queryPart string) ([]model.Page, error) {
 	return pages, nil
 }
 
+func GetPagesFromDates(dates ...string) ([]model.Page, error) {
+	var pages []model.Page
+
+	if len(dates) == 0 {
+		return pages, nil
+	}
+
+	database, err := sql.Open("libsql", urlTurso)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
+		return pages, err
+	}
+	defer database.Close()
+
+	placeholders := make([]string, len(dates))
+	args := make([]any, len(dates))
+	for i, d := range dates {
+		placeholders[i] = "?"
+		args[i] = d
+	}
+
+	query := fmt.Sprintf(
+		`SELECT id, title, created, category
+     FROM pages
+     WHERE substr(created, 1, 10) IN (%s)
+     ORDER BY title COLLATE NOCASE ASC`,
+		strings.Join(placeholders, ","),
+	)
+
+	rows, err := database.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var p model.Page
+		if err := rows.Scan(&p.Id, &p.Title, &p.Created, &p.Category); err != nil {
+			return nil, err
+		}
+		pages = append(pages, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return pages, nil
+}
+
 func AddImage(id string, data []byte) bool {
 	database, err := sql.Open("libsql", urlTurso)
 
@@ -454,6 +555,95 @@ func DeletePage(idGiven int) error {
 	}
 
 	return err
+}
+
+func AddPrePage(url string) error {
+	database, err := sql.Open("libsql", urlTurso)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
+		os.Exit(1)
+	}
+
+	var id int
+	var rows *sql.Rows
+
+	rows, _ = database.Query("select id from prepages where url=?", url)
+	defer rows.Close()
+	defer database.Close()
+
+	for rows.Next() {
+		err := rows.Scan(&id)
+		if err != nil {
+			return err
+		}
+
+		if id > 0 {
+			return errors.New("Already exist.")
+		}
+	}
+
+	stmt, err := database.Prepare("INSERT INTO prepages (url, created) VALUES (?,?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	_, err = stmt.Exec(url, helpers.GetCurrentDateTime())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func GetAllPrePages() ([]model.PrePage, error) {
+	var pages []model.PrePage
+
+	database, err := sql.Open("libsql", urlTurso)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
+		return pages, err
+	}
+
+	rows, _ := database.Query("select id, url, created from prepages order by created COLLATE NOCASE ASC")
+
+	defer rows.Close()
+	defer database.Close()
+
+	for rows.Next() {
+		var pp model.PrePage
+		if err := rows.Scan(&pp.Id, &pp.Url, &pp.Created); err != nil {
+			return nil, err
+		}
+		pages = append(pages, pp)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return pages, nil
+}
+
+func DeletePrePage(id int) error {
+
+	database, err := sql.Open("libsql", urlTurso)
+	if err != nil {
+		return err
+	}
+
+	stmt, err := database.Prepare("delete from prepages where id=?")
+	if err != nil {
+		return err
+	}
+	res, err := stmt.Exec(id)
+	if err != nil {
+		return err
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 1 {
+		return nil
+	}
+
+	return errors.New("Id doesn't exist.")
 }
 
 func GetLinkCategories() ([]string, error) {
@@ -826,16 +1016,18 @@ func Play() {
 		return
 	}
 
-	rows, err := database.Query("select id, category,description, url from links where id='245';")
-	if err != nil {
-		log.Println(err.Error())
-		return
-	}
-	//stmt, err := database.Prepare("select id, category,title  from links where category='';")
+	//rows, err := database.Query("drop table prepages;")
+	//if err != nil {
+	//	log.Println(err.Error())
+	//	return
+	//}
+	stmt, err := database.Prepare("drop table prepages;")
 
+	stmt.Exec()
+
+	defer stmt.Close()
 	defer database.Close()
-	//defer stmt.Close()
-	defer rows.Close()
+	//defer rows.Close()
 
 	//_, err = stmt.Exec()
 	//if err != nil {
@@ -843,28 +1035,28 @@ func Play() {
 	//	return
 	//}
 
-	var id int
-	var category string
-	var description string
-	var url string
+	//var id int
+	//var category string
+	//var description string
+	//var url string
 	//var content string
 	//var created string
 	//var updated string
 	//
-	for rows.Next() {
-		err := rows.Scan(&id, &category, &description, &url)
-		if err != nil {
-			return
-		}
-		fmt.Println(id, category, description, url)
+	//for rows.Next() {
+	//	err := rows.Scan(&id, &category, &description, &url)
+	//	if err != nil {
+	//		return
+	//	}
+	//	fmt.Println(id, category, description, url)
 
-		//	page.Content = content
-		//	page.Created = created
-		//	page.Updated = updated
-		//	pages = append(pages, page)
-	}
+	//	page.Content = content
+	//	page.Created = created
+	//	page.Updated = updated
+	//	pages = append(pages, page)
+	//}
 
-	UpdateLink(model.Link{Id: id, Category: "go", Url: url, Description: description})
+	//UpdateLink(model.Link{Id: id, Category: "go", Url: url, Description: description})
 
 	//for _, page := range pages {
 	//fmt.Println(page.Id)

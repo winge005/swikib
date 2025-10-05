@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -8,7 +10,6 @@ import (
 	"swiki/helpers"
 	"swiki/model"
 	"swiki/persistence"
-	"text/template"
 )
 
 func AbbreviationHandler(w http.ResponseWriter, r *http.Request) {
@@ -19,38 +20,25 @@ func AbbreviationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Println("AbbreviationViewHandler")
-	fl := r.PathValue("fl")
+	firstLetter := r.PathValue("fl")
 
-	var errorMessage = ""
-
-	if len(fl) != 1 {
-		errorMessage = "Wrong input"
+	if len(firstLetter) != 1 {
+		http.Error(w, "firstletter is not ok", http.StatusBadRequest)
+		return
 	}
 
-	abbreviations, err := persistence.GetAbbreviationsForLetter(fl)
+	abbreviations, err := persistence.GetAbbreviationsForLetter(firstLetter)
 	if err != nil {
-		errorMessage = err.Error()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	tmpl, err := template.ParseFiles("templates/abbreviations.html")
-	if tmpl == nil {
-		errorMessage = err.Error()
-	}
-	log.Println(errorMessage)
-	data := struct {
-		Abbreviations []model.Abbreviation
-		ErrorMessage  string
-	}{
-		Abbreviations: abbreviations,
-		ErrorMessage:  errorMessage,
-	}
-	err = tmpl.Execute(w, data)
-
+	response, err := json.Marshal(abbreviations)
 	if err != nil {
-		log.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	helpers.WriteResponse(w, string(response))
 }
 
 func AbbreviationDelete(w http.ResponseWriter, r *http.Request) {
@@ -62,6 +50,7 @@ func AbbreviationDelete(w http.ResponseWriter, r *http.Request) {
 	pathparam := strings.TrimPrefix(r.URL.Path, "/swiki/abbreviation/")
 	persistence.DeleteAbbreviation(pathparam)
 
+	helpers.WriteResponse(w, "")
 }
 
 func AbbreviationAddHandler(w http.ResponseWriter, r *http.Request) {
@@ -71,55 +60,38 @@ func AbbreviationAddHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var errorMessage = ""
+	bd, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	var abbreviation model.Abbreviation
-	r.ParseForm()
-
-	abbreviation.Name = helpers.RemoveSpacesBeforAndAfter(r.FormValue("name"))
-	abbreviation.Description = helpers.RemoveSpacesBeforAndAfter(r.FormValue("description"))
-
-	if len(abbreviation.Name) < 2 || len(abbreviation.Description) < 2 {
-		log.Println("Wrong input")
-		errorMessage = "name or description not filled"
+	err = json.Unmarshal(bd, &abbreviation)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
-	tmpl, err := template.ParseFiles("templates/addabbreviation.html")
-	if tmpl == nil {
-		errorMessage = err.Error()
+	if len(abbreviation.Name) < 1 {
+		http.Error(w, "Name is required", http.StatusBadRequest)
+		return
 	}
 
-	if len(errorMessage) < 1 {
-		abbrs, err := persistence.GetAbbreviationsForLetter(strings.ToUpper(abbreviation.Name[0:1]))
-		if err != nil {
-			errorMessage = err.Error()
-		}
-
-		for _, abbr := range abbrs {
-			if strings.ToUpper(abbr.Name) == strings.ToUpper(abbreviation.Name) {
-				errorMessage = "Name already used"
-			}
-		}
+	if len(abbreviation.Description) < 1 {
+		http.Error(w, "Description is required", http.StatusBadRequest)
+		return
 	}
 
-	var recordNr int
-	if len(errorMessage) < 1 {
-		recordNr, err = persistence.AddAbbreviation(abbreviation)
-		if err != nil {
-			errorMessage = err.Error()
-		}
+	abbreviation.Name = strings.ToLower(abbreviation.Name)
+	recordNr, err := persistence.AddAbbreviation(abbreviation)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
-	data := struct {
-		Abbreviation model.Abbreviation
-		ErrorMessage string
-		Message      string
-	}{
-		Abbreviation: abbreviation,
-		ErrorMessage: errorMessage,
-		Message:      "added abbreviation " + strconv.Itoa(recordNr),
-	}
+	var response = model.ResponseMessage{Message: "added: " + strconv.Itoa(recordNr)}
+	responseJson, err := json.Marshal(response)
 
-	err = tmpl.Execute(w, data)
-
-	log.Println("Added: " + abbreviation.Name + " " + abbreviation.Description)
+	helpers.WriteResponse(w, string(responseJson))
 }
