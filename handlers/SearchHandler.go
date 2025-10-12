@@ -1,52 +1,44 @@
 package handlers
 
 import (
+	"encoding/json"
+	"io"
 	"log"
 	"net/http"
+	"swiki/helpers"
 	"swiki/model"
 	"swiki/search"
-	"text/template"
 )
 
 func SearchHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("SearchHandler")
+	helpers.EnableCors(&w)
+	if (*r).Method == http.MethodOptions {
+		_, _ = w.Write([]byte("allowed"))
+		return
+	}
 
-	var errorMessage = ""
+	bd, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("%s", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	r.ParseForm()
-	query := r.FormValue("query")
-	log.Println(query)
+	var query model.Search
+	err = json.Unmarshal(bd, &query)
 
-	pages, err := search.Search(query)
+	if len(query.SearchQuery) == 0 {
+		http.Error(w, "query is not filled", http.StatusInternalServerError)
+		return
+	}
+
+	pagesFound, err := search.Search(query.SearchQuery)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	tmpl, err := template.ParseFiles("templates/search.html")
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	responseJson, err := json.Marshal(pagesFound)
+	helpers.WriteResponse(w, string(responseJson))
 
-	if len(pages) == 0 {
-		errorMessage = "No results found."
-	}
-
-	data := struct {
-		Query        string
-		ErrorMessage string
-		Pages        []model.Page
-	}{
-		Query:        query,
-		ErrorMessage: errorMessage,
-		Pages:        pages,
-	}
-	err = tmpl.Execute(w, data)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 }

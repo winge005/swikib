@@ -1,0 +1,8 @@
+### GET request to example server
+POST https://localhost:5001/swiki/search
+Content-Type: application/json
+
+{
+  "searchQuery": "Java"
+}
+###

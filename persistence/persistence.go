@@ -4,12 +4,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	_ "github.com/tursodatabase/libsql-client-go/libsql"
 	"log"
 	"os"
+	"sort"
 	"strings"
 	"swiki/helpers"
 	"swiki/model"
+
+	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
 
 var accesskeyTurso string
@@ -93,6 +95,37 @@ func GetCategories() ([]string, error) {
 	}
 
 	return categories, nil
+}
+
+func GetCategoryCount(whereCategory string) (int, error) {
+
+	database, err := sql.Open("libsql", urlTurso)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
+		return 0, err
+	}
+
+	rows, err := database.Query("SELECT COUNT(*) as count from pages WHERE category = ?", whereCategory)
+	if err != nil {
+		log.Println(err.Error())
+		return 0, err
+	}
+
+	defer rows.Close()
+	defer database.Close()
+
+	var count int
+
+	for rows.Next() {
+		err := rows.Scan(&count)
+		if err != nil {
+			log.Println(err.Error())
+			return 0, err
+		}
+		return count, nil
+	}
+
+	return 0, nil
 }
 
 func GetPagesFromCategoryWithContent(whereCategory string) ([]model.Page, error) {
@@ -1003,6 +1036,39 @@ func GetImageFromOffSet(recordTh int) (string, error) {
 	}
 
 	return image, nil
+}
+
+func Getstatistics() model.Statistic {
+	var rtn model.Statistic
+
+	count, err := GetPagesCount()
+	if err != nil {
+		return rtn
+	}
+	rtn.Total = count
+
+	categories, err := GetCategories()
+	if err != nil {
+		return rtn
+	}
+
+	for _, c := range categories {
+		i, err := GetCategoryCount(c)
+		if err != nil {
+			i = 0
+		}
+		cat := model.SCategory{c, i}
+		rtn.SCategories = append(rtn.SCategories, cat)
+	}
+
+	sort.Slice(rtn.SCategories, func(i, j int) bool {
+		if rtn.SCategories[i].Count == rtn.SCategories[j].Count {
+			return rtn.SCategories[i].Name < rtn.SCategories[j].Name
+		}
+		return rtn.SCategories[i].Count > rtn.SCategories[j].Count
+	})
+
+	return rtn
 }
 
 func Play() {

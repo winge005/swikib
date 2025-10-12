@@ -1,14 +1,18 @@
 package search
 
 import (
-	"errors"
+	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
+	"os"
+	"swiki/helpers"
 	"swiki/model"
 	"swiki/persistence"
 	"time"
 )
+
+var docs []model.Document
+var idx = index{}
 
 var stopwords = map[string]struct{}{
 	"a": {}, "about": {}, "above": {}, "after": {}, "again": {}, "against": {}, "all": {}, "am": {}, "an": {}, "and": {}, "any": {}, "are": {}, "aren't": {}, "as": {}, "at": {},
@@ -29,8 +33,27 @@ var stopwords = map[string]struct{}{
 	"you": {}, "you'd": {}, "you'll": {}, "you're": {}, "you've": {}, "your": {}, "yours": {}, "yourself": {}, "yourselves": {},
 }
 
-func CreateIndex() {
-	var docs []model.Document
+func CreateIndex(useCache bool) {
+
+	if useCache {
+		if helpers.FileExists("index.json") {
+			file, err := os.Open("index.json")
+			if err != nil {
+				fmt.Println("Error opening file:", err)
+				return
+			}
+			defer file.Close()
+
+			decoder := json.NewDecoder(file)
+			if err := decoder.Decode(&idx); err != nil {
+				fmt.Println("Error decoding JSON:", err)
+				return
+			}
+
+			log.Println("Index loaded from cache")
+			return
+		}
+	}
 
 	start := time.Now()
 
@@ -47,89 +70,52 @@ func CreateIndex() {
 			log.Fatal(err)
 		}
 		for _, page := range pages {
-			fmt.Println(page.Content)
+			doc := model.Document{Title: page.Title, Text: page.Content, ID: len(docs), DbId: page.Id}
+			docs = append(docs, doc)
 		}
 	}
 
 	log.Printf("Loaded %d documents in %v", len(docs), time.Since(start))
 	start = time.Now()
 
-	idx := index{}
 	idx.add(docs)
 	log.Printf("Indexed %d documents in %v", len(docs), time.Since(start))
 
-	start = time.Now()
-	matchedIDs := idx.search("caveats")
-	log.Printf("Search found %d documents in %v", len(matchedIDs), time.Since(start))
-
-	for _, id := range matchedIDs {
-		doc := docs[id]
-		log.Printf("%d\t%s\n", id, doc.Title, doc.DbId)
-		log.Println("====================================")
+	file, err := os.Create("index.json")
+	if err != nil {
+		fmt.Println("Error creating file:", err)
+		return
 	}
+	defer file.Close()
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ") // pretty print (optional)
+	if err := encoder.Encode(idx); err != nil {
+		fmt.Println("Error encoding JSON:", err)
+		return
+	}
+
+	fmt.Println("✅ JSON index saved")
 }
 
 func Search(query string) ([]model.Page, error) {
-	var q string
+
 	var pages []model.Page
+	matchedIDs := idx.search(query)
+	maxItems := 40
+	currentItem := 0
+	log.Printf("Search found %d documents", len(matchedIDs))
 
-	ands, ors, err := tokenizes(query)
-	if err != nil {
-		if len(query) == 0 {
-			return pages, err
+	for _, id := range matchedIDs {
+		currentItem = currentItem + 1
+		page, err := persistence.GetPage(id)
+		if err != nil {
+			log.Printf("Page with ID %d not found, skipping.", id)
+			continue
 		}
-		q = " content like('%" + query + "%')"
-	}
-
-	for _, str := range ands {
-		q += "content like('%" + str + "%') and "
-	}
-
-	for _, str := range ors {
-		q += "content like('%" + str + "%') or "
-	}
-
-	if strings.HasSuffix(q, " and ") {
-		q = q[0 : len(q)-5]
-	}
-
-	if strings.HasSuffix(q, " or ") {
-		q = q[0 : len(q)-4]
-	}
-
-	pages, err = persistence.GetPageByQuery(q)
-	if err != nil {
-		return pages, nil
+		pages = append(pages, page)
+		if currentItem >= maxItems {
+			break
+		}
 	}
 	return pages, nil
-}
-
-func tokenizes(text string) ([]string, []string, error) {
-	ands := strings.Split(text, "&&")
-	ors := strings.Split(text, "||")
-	if len(ands) == 1 && len(ors) == 1 {
-		return nil, nil, errors.New("No && or ||")
-	}
-	if len(ands) > 1 && len(ors) > 1 {
-		return nil, nil, errors.New("&& and || used together")
-	}
-
-	if len(ands) > 1 {
-		ands = trimSlice(ands)
-		return ands, nil, nil
-	}
-
-	if len(ors) > 1 {
-		ors = trimSlice(ors)
-		return nil, ors, nil
-	}
-
-	return ands, ors, nil
-}
-
-func trimSlice(slice []string) []string {
-	for i, s := range slice {
-		slice[i] = strings.TrimSpace(s)
-	}
-	return slice
 }

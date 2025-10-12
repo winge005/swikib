@@ -9,6 +9,7 @@ import (
 	"swiki/handlers"
 	"swiki/model"
 	"swiki/persistence"
+	"swiki/search"
 	"syscall"
 
 	"gopkg.in/yaml.v2"
@@ -35,6 +36,9 @@ func main() {
 	http.HandleFunc("GET /swiki/pages/created", handlers.SpecialsHandler)
 	http.HandleFunc("GET /swiki/pages/exist/{title}", handlers.PageAlreadyUsedHandler)
 
+	// page Statistics
+	http.HandleFunc("GET /swiki/pages/statistics", handlers.PageGetStatistics)
+
 	// prepages
 	http.HandleFunc("GET /swiki/prepages", handlers.PrePageGetAllHandler)
 	http.HandleFunc("DELETE /swiki/prepages/{id}", handlers.PrePageDeleteHandler)
@@ -55,6 +59,9 @@ func main() {
 	http.HandleFunc("GET /swiki/abbreviation/{fl}", handlers.AbbreviationHandler)
 	http.HandleFunc("DELETE /swiki/abbreviation/{fl}", handlers.AbbreviationDelete)
 
+	// search
+	http.HandleFunc("POST /swiki/search", handlers.SearchHandler)
+
 	// options
 	http.HandleFunc("OPTIONS /swiki/pages/{id}", handlers.PagePreflightHandler)
 	http.HandleFunc("OPTIONS /swiki/pages", handlers.PagePreflightHandler)
@@ -64,8 +71,8 @@ func main() {
 	http.HandleFunc("OPTIONS /swiki/prepages/{id}", handlers.PagePreflightHandler)
 	http.HandleFunc("OPTIONS /swiki/abbreviation", handlers.PagePreflightHandler)
 	http.HandleFunc("OPTIONS /swiki/pages/exist/{title}", handlers.PagePreflightHandler)
-
-	http.HandleFunc("POST /swiki/search", handlers.SearchHandler)
+	http.HandleFunc("OPTIONS /swiki/pages/statistics", handlers.PagePreflightHandler)
+	http.HandleFunc("OPTIONS /swiki/search", handlers.PagePreflightHandler)
 
 	fs := http.FileServer(http.Dir("./frontend"))
 	http.Handle("/", fs)
@@ -73,7 +80,7 @@ func main() {
 	// go images.CheckUneededImages()
 	//persistence.Play()
 
-	//search.CreateIndex()
+	go search.CreateIndex(true)
 
 	srv := http.Server{}
 	sigs := make(chan os.Signal, 1)
