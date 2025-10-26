@@ -70,6 +70,7 @@ func main() {
 	http.HandleFunc("OPTIONS /swiki/prepages", handlers.PagePreflightHandler)
 	http.HandleFunc("OPTIONS /swiki/prepages/{id}", handlers.PagePreflightHandler)
 	http.HandleFunc("OPTIONS /swiki/abbreviation", handlers.PagePreflightHandler)
+	http.HandleFunc("OPTIONS /swiki/abbreviation/{fl}", handlers.PagePreflightHandler)
 	http.HandleFunc("OPTIONS /swiki/pages/exist/{title}", handlers.PagePreflightHandler)
 	http.HandleFunc("OPTIONS /swiki/pages/statistics", handlers.PagePreflightHandler)
 	http.HandleFunc("OPTIONS /swiki/search", handlers.PagePreflightHandler)

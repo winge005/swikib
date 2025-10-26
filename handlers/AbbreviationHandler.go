@@ -83,7 +83,7 @@ func AbbreviationAddHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	abbreviation.Name = strings.ToLower(abbreviation.Name)
+	abbreviation.Name = strings.ToUpper(abbreviation.Name)
 	recordNr, err := persistence.AddAbbreviation(abbreviation)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
