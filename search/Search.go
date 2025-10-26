@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
+	"strings"
 	"swiki/helpers"
 	"swiki/model"
 	"swiki/persistence"
@@ -34,24 +36,22 @@ var stopwords = map[string]struct{}{
 }
 
 func CreateIndex(useCache bool) {
+	docs = nil
+	idx = index{}
 
-	if useCache {
-		if helpers.FileExists("index.json") {
-			file, err := os.Open("index.json")
-			if err != nil {
-				fmt.Println("Error opening file:", err)
-				return
-			}
+	if useCache && helpers.FileExists("index.json") {
+		file, err := os.Open("index.json")
+		if err == nil {
 			defer file.Close()
-
 			decoder := json.NewDecoder(file)
-			if err := decoder.Decode(&idx); err != nil {
-				fmt.Println("Error decoding JSON:", err)
+			if err := decoder.Decode(&idx); err == nil && idx.Postings != nil && idx.N > 0 {
+				log.Println("Index loaded from cache")
 				return
 			}
-
-			log.Println("Index loaded from cache")
-			return
+			// If we get here, the cache is incompatible or broken.
+			log.Printf("Cache incompatible or unreadable (%v). Rebuilding…", err)
+		} else {
+			log.Printf("Could not open cache: %v. Rebuilding…", err)
 		}
 	}
 
@@ -70,7 +70,12 @@ func CreateIndex(useCache bool) {
 			log.Fatal(err)
 		}
 		for _, page := range pages {
-			doc := model.Document{Title: page.Title, Text: page.Content, ID: len(docs), DbId: page.Id}
+			doc := model.Document{
+				Title: page.Title,
+				Text:  page.Content,
+				ID:    len(docs),
+				DbId:  page.Id,
+			}
 			docs = append(docs, doc)
 		}
 	}
@@ -88,7 +93,7 @@ func CreateIndex(useCache bool) {
 	}
 	defer file.Close()
 	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ") // pretty print (optional)
+	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(idx); err != nil {
 		fmt.Println("Error encoding JSON:", err)
 		return
@@ -98,24 +103,52 @@ func CreateIndex(useCache bool) {
 }
 
 func Search(query string) ([]model.Page, error) {
+	const maxItems = 40
 
-	var pages []model.Page
-	matchedIDs := idx.search(query)
-	maxItems := 40
-	currentItem := 0
-	log.Printf("Search found %d documents", len(matchedIDs))
+	// Optional: if user typed a quoted phrase, we boost those docs later
+	var phraseBoost map[uint32]bool
+	if strings.Contains(query, "\"") {
+		if terms := parseQuotedTerms(query); len(terms) > 0 {
+			ids := idx.phraseSearch(terms)
+			if len(ids) > 0 {
+				phraseBoost = make(map[uint32]bool, len(ids))
+				for _, id := range ids {
+					phraseBoost[id] = true
+				}
+			}
+		}
+	}
 
-	for _, id := range matchedIDs {
-		currentItem = currentItem + 1
-		page, err := persistence.GetPage(id)
+	// Ranked search with BM25
+	hits := idx.bm25Search(query)
+	if len(hits) == 0 {
+		return nil, nil
+	}
+
+	// Boost phrase matches (if any), then sort again
+	if phraseBoost != nil {
+		for i := range hits {
+			if phraseBoost[hits[i].DocID] {
+				hits[i].Score *= 1.5
+			}
+		}
+		sort.Slice(hits, func(i, j int) bool { return hits[i].Score > hits[j].Score })
+	}
+
+	// Map internal DocID -> real DB ID using the new mapping (fixes DocID!=DBID)
+	pages := make([]model.Page, 0, maxItems)
+	for i := 0; i < len(hits) && len(pages) < maxItems; i++ {
+		docID := hits[i].DocID
+		if int(docID) >= len(idx.DocID2DBID) {
+			continue
+		}
+		dbID := idx.DocID2DBID[docID]
+		page, err := persistence.GetPage(dbID)
 		if err != nil {
-			log.Printf("Page with ID %d not found, skipping.", id)
+			log.Printf("Page with DB ID %d not found, skipping.", dbID)
 			continue
 		}
 		pages = append(pages, page)
-		if currentItem >= maxItems {
-			break
-		}
 	}
 	return pages, nil
 }
