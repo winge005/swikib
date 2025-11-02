@@ -31,10 +31,13 @@ func main() {
 	http.HandleFunc("DELETE /swiki/pages/{id}", handlers.PageDeleteHandler)
 	http.HandleFunc("POST /swiki/pages", handlers.PageAddHandler)
 	http.HandleFunc("POST /swiki/page/preview", handlers.PreviewHandler)
-	http.HandleFunc("GET /swiki/pages/image", handlers.ImageHandler)
 	http.HandleFunc("POST /swiki/pages/uploadImage", handlers.UploadImageHandler)
 	http.HandleFunc("GET /swiki/pages/created", handlers.SpecialsHandler)
 	http.HandleFunc("GET /swiki/pages/exist/{title}", handlers.PageAlreadyUsedHandler)
+
+	// pictures
+	http.HandleFunc("GET /swiki/pages/imagessize", handlers.ImageSizeHandler)
+	http.HandleFunc("GET /swiki/pages/image", handlers.ImageHandler)
 
 	// page Statistics
 	http.HandleFunc("GET /swiki/pages/statistics", handlers.PageGetStatistics)
@@ -79,9 +82,10 @@ func main() {
 	http.Handle("/", fs)
 
 	// go images.CheckUneededImages()
-	//persistence.Play()
 
-	go search.CreateIndex(true)
+	// persistence.Play()
+
+	go search.CreateIndex(false)
 
 	srv := http.Server{}
 	sigs := make(chan os.Signal, 1)

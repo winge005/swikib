@@ -332,6 +332,34 @@ func GetImageFrom(id string) []byte {
 	return response
 }
 
+func Get25biggestImages() (error, []model.PictureInfo) {
+
+	var response []model.PictureInfo
+	database, err := sql.Open("libsql", urlTurso)
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
+		os.Exit(1)
+	}
+
+	rows, _ := database.Query("SELECT id, image_size_bytes FROM pictures WHERE image_size_bytes IS NOT NULL AND id NOT LIKE '%.gif' ORDER BY image_size_bytes DESC LIMIT 25;")
+
+	defer rows.Close()
+	defer database.Close()
+
+	var id string
+	var image_size_bytes int
+
+	for rows.Next() {
+		err := rows.Scan(&id, &image_size_bytes)
+		if err != nil {
+			return nil, response
+		}
+		response = append(response, model.PictureInfo{Id: id, ImageSizeBytes: int(image_size_bytes)})
+	}
+	return nil, response
+}
+
 func UpdatePage(newPage model.Page) error {
 	database, err := sql.Open("libsql", urlTurso)
 	if err != nil {
@@ -1075,51 +1103,12 @@ func Play() {
 	//	log.Println(err.Error())
 	//	return
 	//}
-	stmt, err := database.Prepare("drop table prepages;")
+	stmt, err := database.Prepare("CREATE INDEX IF NOT EXISTS idx_pictures_size_desc ON pictures(image_size_bytes DESC, id);")
 
 	stmt.Exec()
 
 	defer stmt.Close()
 	defer database.Close()
-	//defer rows.Close()
 
-	//_, err = stmt.Exec()
-	//if err != nil {
-	//	log.Println("failed deleting")
-	//	return
-	//}
-
-	//var id int
-	//var category string
-	//var description string
-	//var url string
-	//var content string
-	//var created string
-	//var updated string
-	//
-	//for rows.Next() {
-	//	err := rows.Scan(&id, &category, &description, &url)
-	//	if err != nil {
-	//		return
-	//	}
-	//	fmt.Println(id, category, description, url)
-
-	//	page.Content = content
-	//	page.Created = created
-	//	page.Updated = updated
-	//	pages = append(pages, page)
-	//}
-
-	//UpdateLink(model.Link{Id: id, Category: "go", Url: url, Description: description})
-
-	//for _, page := range pages {
-	//fmt.Println(page.Id)
-	//fmt.Println(page.Title)
-	//fmt.Println(page.Category)
-	//fmt.Println(page.Content)
-	//fmt.Println(page.Created)
-	//fmt.Println(page.Updated)
-	//DeletePage(1873)
-	//}
 	fmt.Println("Prima de luxe")
 }

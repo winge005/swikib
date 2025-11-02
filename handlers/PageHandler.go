@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"swiki/helpers"
@@ -350,13 +351,48 @@ func PageGetStatistics(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("allowed"))
 		return
 	}
-	responseJson, err := json.Marshal(persistence.Getstatistics())
-	if err != nil {
-		log.Printf("%s", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+	useCache := r.URL.Query().Get("cache") == "true"
+	if useCache && helpers.FileExists("statistics.json") {
+		// Serve cached JSON directly
+		data, err := os.ReadFile("statistics.json")
+		if err != nil {
+			log.Printf("error reading cache: %v", err)
+			http.Error(w, "failed to read cache", http.StatusInternalServerError)
+			return
+		}
+
+		// (Optional) validate JSON once
+		var tmp any
+		if err := json.Unmarshal(data, &tmp); err != nil {
+			log.Printf("invalid cached JSON: %v", err)
+			http.Error(w, "invalid cached json", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(data)
+		log.Println("✅ Served stats from cache")
 		return
 	}
 
-	helpers.WriteResponse(w, string(responseJson))
+	// No cache: compute, serialize, persist, and return
+	stat := persistence.Getstatistics()
 
+	responseJSON, err := json.Marshal(stat)
+	if err != nil {
+		log.Printf("marshal error: %v", err)
+		http.Error(w, "failed to serialize stats", http.StatusInternalServerError)
+		return
+	}
+
+	if err := os.WriteFile("statistics.json", responseJSON, 0o644); err != nil {
+		log.Printf("cache write error: %v", err)
+		// Not fatal for the response; continue to return the JSON
+	} else {
+		log.Println("✅ statistics saved")
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(responseJSON)
 }
