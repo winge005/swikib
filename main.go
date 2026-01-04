@@ -27,6 +27,7 @@ func main() {
 	http.HandleFunc("GET /swiki/pages/categories", handlers.PageHandlerGetCategories)
 	http.HandleFunc("GET /swiki/pages/categories/{category}", handlers.PageCategoriesHandler)
 	http.HandleFunc("GET /swiki/pages/{id}", handlers.PageViewHandler)
+	http.HandleFunc("GET /swiki/pages/edit/{id}", handlers.PageEditHandler)
 	http.HandleFunc("PUT /swiki/pages/{id}", handlers.PageUpdateHandler)
 	http.HandleFunc("DELETE /swiki/pages/{id}", handlers.PageDeleteHandler)
 	http.HandleFunc("POST /swiki/pages", handlers.PageAddHandler)
