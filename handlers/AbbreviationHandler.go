@@ -23,7 +23,7 @@ func AbbreviationHandler(w http.ResponseWriter, r *http.Request) {
 	firstLetter := r.PathValue("fl")
 
 	if len(firstLetter) != 1 {
-		http.Error(w, "firstletter is not ok", http.StatusBadRequest)
+		http.Error(w, "first-letter is not ok", http.StatusBadRequest)
 		return
 	}
 
@@ -48,7 +48,11 @@ func AbbreviationDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pathparam := strings.TrimPrefix(r.URL.Path, "/swiki/abbreviation/")
-	persistence.DeleteAbbreviation(pathparam)
+	err := persistence.DeleteAbbreviation(pathparam)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	helpers.WriteResponse(w, "")
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -52,7 +53,9 @@ func UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "cannot open part: "+err.Error(), http.StatusBadRequest)
 			return
 		}
-		defer file.Close()
+		defer func(file multipart.File) {
+			_ = file.Close()
+		}(file)
 
 		name := filepath.Base(fh.Filename)
 		if !checkValidExtension(name) {

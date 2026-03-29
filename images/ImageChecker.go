@@ -2,21 +2,22 @@ package images
 
 import (
 	"fmt"
-	"github.com/gomarkdown/markdown"
-	"github.com/gomarkdown/markdown/html"
 	"regexp"
 	"strings"
 	"swiki/persistence"
 	"time"
+
+	"github.com/gomarkdown/markdown"
+	"github.com/gomarkdown/markdown/html"
 )
 
 func CheckUneededImages() {
 
 	currentTime := time.Now()
 
-	nr, error := persistence.GetPagesCount()
-	if error != nil {
-		fmt.Println(error.Error())
+	nr, err := persistence.GetPagesCount()
+	if err != nil {
+		fmt.Println(err.Error())
 		return
 	}
 
@@ -54,9 +55,9 @@ func CheckUneededImages() {
 
 	fmt.Println(time.Since(currentTime), "pages in slice")
 
-	nr, error = persistence.GetImageCount()
-	if error != nil {
-		fmt.Println(error.Error())
+	nr, err = persistence.GetImageCount()
+	if err != nil {
+		fmt.Println(err.Error())
 		return
 	}
 	fmt.Println(time.Since(currentTime), "nr of pictures", nr)
@@ -106,7 +107,7 @@ func contains(elems []string, v string) bool {
 }
 
 func ProcessImagesFromHtml(html string) []string {
-	repsonse := make([]string, 0)
+	var repsonse = make([]string, 0)
 	r := regexp.MustCompile(`<img[^>]*src="([^"]+)"[^>]*>`)
 
 	matches := r.FindAllString(html, -1)

@@ -9,6 +9,7 @@ import (
 	"swiki/handlers"
 	"swiki/model"
 	"swiki/persistence"
+	"swiki/persistencelocal"
 	"swiki/search"
 	"syscall"
 
@@ -22,6 +23,8 @@ func main() {
 	getConfig()
 	persistence.SetConfig(config.Server.AccessToken)
 	persistence.CreateTables()
+	persistencelocal.CreateTables()
+	//persistencelocal.Sync()
 
 	// pages
 	http.HandleFunc("GET /swiki/pages/categories", handlers.PageHandlerGetCategories)

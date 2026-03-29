@@ -1,8 +1,9 @@
 package search
 
 import (
-	snowballeng "github.com/kljensen/snowball/english"
 	"strings"
+
+	snowballeng "github.com/kljensen/snowball/english"
 )
 
 func lowercaseFilter(tokens []string) []string {

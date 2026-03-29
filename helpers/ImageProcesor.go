@@ -6,7 +6,7 @@ import (
 )
 
 func ProcessImagesFromHtml(html string) []string {
-	repsonse := make([]string, 0)
+	var repsonse = make([]string, 0)
 	r := regexp.MustCompile(`<img[^>]*src="([^"]+)"[^>]*>`)
 
 	matches := r.FindAllString(html, -1)

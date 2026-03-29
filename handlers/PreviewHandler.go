@@ -1,14 +1,15 @@
 package handlers
 
 import (
-	"github.com/gomarkdown/markdown"
-	"github.com/gomarkdown/markdown/html"
 	"io"
 	"log"
 	"net/http"
 	"strings"
 	"swiki/helpers"
 	"text/template"
+
+	"github.com/gomarkdown/markdown"
+	"github.com/gomarkdown/markdown/html"
 )
 
 func PreviewHandler(w http.ResponseWriter, r *http.Request) {

@@ -73,6 +73,7 @@ func GetCategories() ([]string, error) {
 		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
 		return categories, err
 	}
+	defer database.Close()
 
 	rows, err := database.Query("select DISTINCT category from pages order by category")
 	if err != nil {
@@ -81,7 +82,6 @@ func GetCategories() ([]string, error) {
 	}
 
 	defer rows.Close()
-	defer database.Close()
 
 	var category string
 
@@ -104,6 +104,7 @@ func GetCategoryCount(whereCategory string) (int, error) {
 		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
 		return 0, err
 	}
+	defer database.Close()
 
 	rows, err := database.Query("SELECT COUNT(*) as count from pages WHERE category = ?", whereCategory)
 	if err != nil {
@@ -112,7 +113,6 @@ func GetCategoryCount(whereCategory string) (int, error) {
 	}
 
 	defer rows.Close()
-	defer database.Close()
 
 	var count int
 
@@ -355,7 +355,35 @@ func Get25biggestImages() (error, []model.PictureInfo) {
 		if err != nil {
 			return nil, response
 		}
-		response = append(response, model.PictureInfo{Id: id, ImageSizeBytes: int(image_size_bytes)})
+		response = append(response, model.PictureInfo{Id: id, ImageSizeBytes: image_size_bytes})
+	}
+	return nil, response
+}
+
+func GetImages() (error, []model.PictureInfo) {
+
+	var response []model.PictureInfo
+	database, err := sql.Open("libsql", urlTurso)
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
+		os.Exit(1)
+	}
+
+	rows, _ := database.Query("SELECT id, image_size_bytes FROM pictures WHERE image_size_bytes IS NOT NULL;")
+
+	defer rows.Close()
+	defer database.Close()
+
+	var id string
+	var image_size_bytes int
+
+	for rows.Next() {
+		err := rows.Scan(&id, &image_size_bytes)
+		if err != nil {
+			return nil, response
+		}
+		response = append(response, model.PictureInfo{Id: id, ImageSizeBytes: image_size_bytes})
 	}
 	return nil, response
 }
@@ -365,6 +393,8 @@ func UpdatePage(newPage model.Page) error {
 	if err != nil {
 		return err
 	}
+
+	defer database.Close()
 
 	stmt, err := database.Prepare("UPDATE pages SET category=?, title=?, content=?, Updated=? WHERE id = ?")
 	if err != nil {
@@ -383,7 +413,7 @@ func UpdatePage(newPage model.Page) error {
 	if affected == 1 {
 		return nil
 	}
-	return errors.New("Nothing updated")
+	return errors.New("nothing updated")
 }
 
 func AddPage(page model.Page) (int, error) {
@@ -392,7 +422,7 @@ func AddPage(page model.Page) (int, error) {
 		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
 		os.Exit(1)
 	}
-
+	defer database.Close()
 	var id int
 	var rows *sql.Rows
 
@@ -404,9 +434,10 @@ func AddPage(page model.Page) (int, error) {
 		}
 
 		if id > 0 {
-			return 0, errors.New("Already exist.")
+			return 0, errors.New("already exist.")
 		}
 	}
+	defer rows.Close()
 
 	stmt, err := database.Prepare("INSERT INTO pages (title, category, content, created, updated) VALUES (?,?,?,?,?) RETURNING id")
 	if err != nil {
@@ -540,18 +571,18 @@ func GetPagesFromDates(dates ...string) ([]model.Page, error) {
 
 func AddImage(id string, data []byte) bool {
 	database, err := sql.Open("libsql", urlTurso)
-
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
 		os.Exit(1)
 	}
+	defer database.Close()
 
 	stmt, err := database.Prepare("INSERT INTO pictures (id, image, created, updated) VALUES (?,?,?,?)")
-	defer database.Close()
 	if err != nil {
 		log.Println(err)
 		return false
 	}
+	defer stmt.Close()
 
 	res, err := stmt.Exec(id, data, helpers.GetCurrentDateTime(), "")
 	if err != nil {
@@ -601,11 +632,13 @@ func DeletePage(idGiven int) error {
 	if err != nil {
 		return err
 	}
+	defer database.Close()
 
 	stmt, err := database.Prepare("delete from pages where id=?")
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
 	res, err := stmt.Exec(idGiven)
 	if err != nil {
 		return err
@@ -639,7 +672,7 @@ func AddPrePage(url string) error {
 		}
 
 		if id > 0 {
-			return errors.New("Already exist.")
+			return errors.New("already exist.")
 		}
 	}
 
@@ -690,8 +723,10 @@ func DeletePrePage(id int) error {
 	if err != nil {
 		return err
 	}
+	defer database.Close()
 
 	stmt, err := database.Prepare("delete from prepages where id=?")
+	defer stmt.Close()
 	if err != nil {
 		return err
 	}
@@ -704,7 +739,7 @@ func DeletePrePage(id int) error {
 		return nil
 	}
 
-	return errors.New("Id doesn't exist.")
+	return errors.New("id doesn't exist")
 }
 
 func GetLinkCategories() ([]string, error) {
@@ -714,10 +749,11 @@ func GetLinkCategories() ([]string, error) {
 		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
 		return categories, err
 	}
+	defer database.Close()
+
 	rows, _ := database.Query("select DISTINCT category from links order by category")
 
 	defer rows.Close()
-	defer database.Close()
 
 	var category string
 
@@ -739,10 +775,10 @@ func GetLinksFromCategory(whereCategory string) ([]model.Link, error) {
 	if err != nil {
 		return links, err
 	}
+	defer database.Close()
 	rows, _ := database.Query("select id, url, description, category, created, IFNULL(updated, '') from links where category=?  order by description COLLATE NOCASE ASC", whereCategory)
 
 	defer rows.Close()
-	defer database.Close()
 
 	var id int
 	var url string
@@ -774,15 +810,13 @@ func GetLink(idGiven int) (model.Link, error) {
 	if err != nil {
 		return link, err
 	}
+	defer database.Close()
 
 	rows, err := database.Query("select category, url, description, created, IFNULL(updated, '') from links where id=?", idGiven)
-
 	if err != nil {
 		return link, err
 	}
-
 	defer rows.Close()
-	defer database.Close()
 
 	var category string
 	var url string
@@ -839,6 +873,7 @@ func UpdateLink(newLink model.Link) error {
 	if err != nil {
 		return err
 	}
+	defer database.Close()
 
 	stmt, err := database.Prepare("UPDATE links SET category=?, url=?, description=?, Updated=? WHERE id = ?")
 	if err != nil {
@@ -855,7 +890,7 @@ func UpdateLink(newLink model.Link) error {
 	if affected == 1 {
 		return nil
 	}
-	return errors.New("Nothing updated")
+	return errors.New("nothing updated")
 }
 
 func AddLink(newLink model.Link) (int, error) {
@@ -863,11 +898,13 @@ func AddLink(newLink model.Link) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	defer database.Close()
 
 	var id int
 	var rows *sql.Rows
 
 	rows, _ = database.Query("select id from links where url=?", newLink.Url)
+	defer rows.Close()
 	for rows.Next() {
 		err := rows.Scan(&id)
 		if err != nil {
@@ -875,7 +912,10 @@ func AddLink(newLink model.Link) (int, error) {
 		}
 
 		if id > 0 {
-			return 0, errors.New("Already exist.")
+			return 0, errors.New("already exist")
+		}
+		if id > 0 {
+			return 0, errors.New("already exist")
 		}
 	}
 
@@ -883,7 +923,6 @@ func AddLink(newLink model.Link) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-
 	defer stmt.Close()
 
 	err = stmt.QueryRow(newLink.Category, newLink.Url, newLink.Description, helpers.GetCurrentDateTime()).Scan(&id)
@@ -896,15 +935,16 @@ func AddLink(newLink model.Link) (int, error) {
 
 func DeleteLink(idGiven int) error {
 	database, err := sql.Open("libsql", urlTurso)
-
 	if err != nil {
 		return err
 	}
+	defer database.Close()
 
 	stmt, err := database.Prepare("delete from links where id=?")
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
 	_, err = stmt.Exec(idGiven)
 	if err != nil {
 		return err
@@ -920,9 +960,10 @@ func PerformCache() {
 func setAbbreviationInCache() {
 	var abbreviation model.Abbreviation
 	database, _ := sql.Open("libsql", urlTurso)
+	defer database.Close()
+
 	rows, _ := database.Query("select id, name, description from abbreviations")
 	defer rows.Close()
-	defer database.Close()
 
 	var id int
 	var name string
@@ -953,12 +994,38 @@ func GetAbbreviationsForLetter(givenLetter string) ([]model.Abbreviation, error)
 	return abbreviationsInCache[givenLetter], nil
 }
 
+func GetAllAbbreviations() ([]model.Abbreviation, error) {
+	var abbreviation model.Abbreviation
+	var abbreviations []model.Abbreviation
+	database, _ := sql.Open("libsql", urlTurso)
+	defer database.Close()
+	rows, _ := database.Query("select id, name, description from abbreviations")
+	defer rows.Close()
+
+	var id int
+	var name string
+	var description string
+
+	for rows.Next() {
+		err := rows.Scan(&id, &name, &description)
+		if err != nil {
+			log.Panic("No rows found for abbreviations")
+		}
+		abbreviation.Id = id
+		abbreviation.Name = name
+		abbreviation.Description = description
+		abbreviations = append(abbreviations, abbreviation)
+	}
+	return abbreviations, nil
+}
+
 func AddAbbreviation(abbreviation model.Abbreviation) (int, error) {
 	database, _ := sql.Open("libsql", urlTurso)
 	defer database.Close()
 
 	var id int
 	stmt, err := database.Prepare("INSERT INTO abbreviations (name, description) VALUES (?,?) RETURNING id")
+	defer stmt.Close()
 	if err != nil {
 		return 0, err
 	}
@@ -978,10 +1045,10 @@ func DeleteAbbreviation(id string) error {
 	if err != nil {
 		return err
 	}
-
 	defer database.Close()
 
 	stmt, err := database.Prepare("Delete from abbreviations where id = ?")
+	defer stmt.Close()
 	if err != nil {
 		return err
 	}
@@ -990,7 +1057,6 @@ func DeleteAbbreviation(id string) error {
 		return err
 	}
 
-	defer stmt.Close()
 	setAbbreviationInCache()
 	return nil
 }
@@ -1008,7 +1074,6 @@ func GetImageCount() (int, error) {
 	defer database.Close()
 
 	rows, err := database.Query("SELECT COUNT() as count FROM pictures")
-
 	if err != nil {
 		fmt.Printf("%s", err)
 	}
@@ -1073,7 +1138,7 @@ func Getstatistics() model.Statistic {
 		if err != nil {
 			i = 0
 		}
-		cat := model.SCategory{c, i}
+		cat := model.SCategory{Name: c, Count: i}
 		rtn.SCategories = append(rtn.SCategories, cat)
 	}
 
