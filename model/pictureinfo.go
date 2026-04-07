@@ -10,3 +10,10 @@ type PictureInfoLocal struct {
 	ImageSizeBytes int    `json:"imageSizeBytes"`
 	TursoId        string `json:"tursoid"`
 }
+
+type Picture struct {
+	Id         string `json:"id"`
+	ImageBytes []byte `json:"image"`
+	Created    string `json:"createdid"`
+	Updated    string `json:"updatedid"`
+}

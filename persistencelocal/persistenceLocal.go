@@ -172,10 +172,10 @@ func GetPage(idGiven int) (model.PageLocal, error) {
 		log.Println(err.Error())
 		return page, err
 	}
+	defer database.Close()
 	rows, _ := database.Query("select id, category, title, content, created, updated, tursoid from pages where id=?", idGiven)
 
 	defer rows.Close()
-	defer database.Close()
 
 	var id int
 	var category string
@@ -233,22 +233,22 @@ func GetImageFrom(id string) []byte {
 	return response
 }
 
-func UpdatePage(newPage model.PageLocal) error {
+func UpdatePage(updatedPage model.PageLocal) error {
 	database, err := sql.Open(driverName, dbName)
 	if err != nil {
 		return err
 	}
 	defer database.Close()
 
-	stmt, err := database.Prepare("UPDATE pages SET category=?, title=?, content=?, Updated=?, tursoId WHERE tursoid = ?")
+	stmt, err := database.Prepare("UPDATE pages SET category=?, title=?, content=?, Updated=? WHERE tursoid = ?")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	newPage.Category = strings.ToLower(newPage.Category)
+	updatedPage.Category = strings.ToLower(updatedPage.Category)
 
-	res, err := stmt.Exec(newPage.Category, newPage.Title, newPage.Content, helpers.GetCurrentDateTime(), newPage.TursoId)
+	res, err := stmt.Exec(updatedPage.Category, updatedPage.Title, updatedPage.Content, updatedPage.Updated)
 	if err != nil {
 		return err
 	}
@@ -336,7 +336,7 @@ func DeleteImage(id string) (int64, error) {
 	return affected, err
 }
 
-func AddImage(pictureInfoLocal model.PictureInfoLocal) bool {
+func AddImage(picture model.Picture) bool {
 	database, err := sql.Open(driverName, dbName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", dbName, err)
@@ -344,14 +344,14 @@ func AddImage(pictureInfoLocal model.PictureInfoLocal) bool {
 	}
 	defer database.Close()
 
-	stmt, err := database.Prepare("INSERT INTO pictures (id, image, created, updated, tursoid) VALUES (?,?,?,?,?)")
+	stmt, err := database.Prepare("INSERT INTO pictures (id, image, created) VALUES (?,?,?)")
 	defer stmt.Close()
 	if err != nil {
 		log.Println(err)
 		return false
 	}
 
-	res, err := stmt.Exec(pictureInfoLocal.Id, pictureInfoLocal.ImageSizeBytes, helpers.GetCurrentDateTime(), "", pictureInfoLocal.TursoId)
+	res, err := stmt.Exec(picture.Id, picture.ImageBytes, picture.Created)
 	if err != nil {
 		log.Println(err)
 		return false
@@ -408,4 +408,57 @@ func AddAbbreviation(abbreviation model.AbbreviationLocal) (int, error) {
 		return 0, err
 	}
 	return id, nil
+}
+
+func GetAbbreviation(givenAbbreviation string) (model.AbbreviationLocal, error) {
+	var abbreviation model.AbbreviationLocal
+	database, err := sql.Open(driverName, dbName)
+	if err != nil {
+		return abbreviation, err
+	}
+
+	defer database.Close()
+	rows, _ := database.Query("Select * from abbreviations where name=?", givenAbbreviation)
+	defer rows.Close()
+
+	var id int
+	var name string
+	var description string
+	var tursoid int
+
+	if rows == nil {
+		return abbreviation, errors.New("no result")
+	}
+
+	for rows.Next() {
+		err := rows.Scan(&id, &name, &description, &tursoid)
+		if err != nil {
+			return abbreviation, err
+		}
+		abbreviation.Id = id
+		abbreviation.Name = name
+		abbreviation.Description = description
+		abbreviation.TursoId = tursoid
+		break
+	}
+
+	return abbreviation, nil
+}
+
+func DropTable(tbl string) error {
+	database, err := sql.Open(driverName, dbName)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to open localdb %s: %s", dbName, err)
+		return err
+	}
+	defer database.Close()
+
+	pages := fmt.Sprintf("DROP TABLE IF EXISTS %s;", tbl)
+
+	_, err = database.Exec(pages)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

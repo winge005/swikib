@@ -166,6 +166,111 @@ func GetPagesFromCategoryWithContent(whereCategory string) ([]model.Page, error)
 	return pages, nil
 }
 
+func GetPagesFromDateAndAfterWithContent(afterDate string) ([]model.Page, error) {
+	var pages []model.Page
+
+	database, err := sql.Open("libsql", urlTurso)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
+		return pages, err
+	}
+
+	/**
+	SELECT *
+	FROM pages
+	WHERE
+	substr(created, 7, 4) || '-' ||  -- YYYY
+	substr(created, 4, 2) || '-' ||  -- MM
+	substr(created, 1, 2) || ' ' ||  -- DD
+	substr(created, 12)              -- HH:MM:SS
+	> '2026-04-04 21:56:00';
+	**/
+
+	year := afterDate[6:10]
+	month := afterDate[3:5]
+	day := afterDate[0:2]
+	hour := afterDate[11:13]
+	minute := afterDate[14:16]
+	second := afterDate[17:19]
+
+	compareDate := year + "-" + month + "-" + day + " " + hour + ":" + minute + ":" + second
+
+	rows, _ := database.Query("SELECT id, title, category, content, Created, updated FROM pages WHERE substr(created, 7, 4) || '-' || substr(created, 4, 2) || '-' || substr(created, 1, 2) || ' ' || substr(created, 12) > ?;", compareDate)
+
+	defer rows.Close()
+	defer database.Close()
+
+	var id int
+	var title string
+	var category string
+	var content string
+	var created string
+	var updated string
+
+	for rows.Next() {
+		err := rows.Scan(&id, &title, &category, &content, &created, &updated)
+		if err != nil {
+			return nil, err
+		}
+		var page model.Page
+		page.Id = id
+		page.Title = title
+		page.Category = category
+		page.Content = content
+		page.Created = created
+		page.Updated = updated
+		pages = append(pages, page)
+	}
+	return pages, nil
+}
+
+func GetUpdatedPagesFromDateAndAfterWithContent(afterDate string) ([]model.Page, error) {
+	var pages []model.Page
+
+	database, err := sql.Open("libsql", urlTurso)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
+		return pages, err
+	}
+
+	year := afterDate[6:10]
+	month := afterDate[3:5]
+	day := afterDate[0:2]
+	hour := afterDate[11:13]
+	minute := afterDate[14:16]
+	second := afterDate[17:19]
+
+	compareDate := year + "-" + month + "-" + day + " " + hour + ":" + minute + ":" + second
+
+	rows, _ := database.Query("SELECT id, title, category, content, Created, updated FROM pages WHERE substr(updated, 7, 4) || '-' || substr(updated, 4, 2) || '-' || substr(updated, 1, 2) || ' ' || substr(updated, 12) > ?;", compareDate)
+
+	defer rows.Close()
+	defer database.Close()
+
+	var id int
+	var title string
+	var category string
+	var content string
+	var created string
+	var updated string
+
+	for rows.Next() {
+		err := rows.Scan(&id, &title, &category, &content, &created, &updated)
+		if err != nil {
+			return nil, err
+		}
+		var page model.Page
+		page.Id = id
+		page.Title = title
+		page.Category = category
+		page.Content = content
+		page.Created = created
+		page.Updated = updated
+		pages = append(pages, page)
+	}
+	return pages, nil
+}
+
 func GetPagesFromCategoryWithoutContent(whereCategory string) ([]model.Page, error) {
 	var pages []model.Page
 
@@ -330,6 +435,92 @@ func GetImageFrom(id string) []byte {
 		response = image
 	}
 	return response
+}
+
+func GetImagesFromDateAfter(afterDate string) ([]model.Picture, error) {
+	var images []model.Picture
+
+	database, err := sql.Open("libsql", urlTurso)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
+		return images, err
+	}
+
+	year := afterDate[6:10]
+	month := afterDate[3:5]
+	day := afterDate[0:2]
+	hour := afterDate[11:13]
+	minute := afterDate[14:16]
+	second := afterDate[17:19]
+
+	compareDate := year + "-" + month + "-" + day + " " + hour + ":" + minute + ":" + second
+
+	rows, _ := database.Query("SELECT * FROM pictures WHERE substr(created, 7, 4) || '-' || substr(created, 4, 2) || '-' || substr(created, 1, 2) || ' ' || substr(created, 12) > ?;", compareDate)
+
+	defer rows.Close()
+	defer database.Close()
+
+	var id string
+	var image []byte
+	var created string
+	var updated string
+
+	for rows.Next() {
+		err := rows.Scan(&id, &image, &created, &updated)
+		if err != nil {
+			return nil, err
+		}
+		var img model.Picture
+		img.Id = id
+		img.ImageBytes = image
+		img.Created = created
+		img.Updated = updated
+		images = append(images, img)
+	}
+	return images, nil
+}
+
+func GetImagesFromDateAfterUpdated(afterDate string) ([]model.Picture, error) {
+	var images []model.Picture
+
+	database, err := sql.Open("libsql", urlTurso)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", urlTurso, err)
+		return images, err
+	}
+
+	year := afterDate[6:10]
+	month := afterDate[3:5]
+	day := afterDate[0:2]
+	hour := afterDate[11:13]
+	minute := afterDate[14:16]
+	second := afterDate[17:19]
+
+	compareDate := year + "-" + month + "-" + day + " " + hour + ":" + minute + ":" + second
+
+	rows, _ := database.Query("SELECT * FROM pictures WHERE substr(updated, 7, 4) || '-' || substr(updated, 4, 2) || '-' || substr(updated, 1, 2) || ' ' || substr(updated, 12) > ?;", compareDate)
+
+	defer rows.Close()
+	defer database.Close()
+
+	var id string
+	var image []byte
+	var created string
+	var updated string
+
+	for rows.Next() {
+		err := rows.Scan(&id, &image, &created, &updated)
+		if err != nil {
+			return nil, err
+		}
+		var img model.Picture
+		img.Id = id
+		img.ImageBytes = image
+		img.Created = created
+		img.Updated = updated
+		images = append(images, img)
+	}
+	return images, nil
 }
 
 func Get25biggestImages() (error, []model.PictureInfo) {

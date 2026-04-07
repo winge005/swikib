@@ -66,6 +66,11 @@ func main() {
 	http.HandleFunc("GET /swiki/abbreviation/{fl}", handlers.AbbreviationHandler)
 	http.HandleFunc("DELETE /swiki/abbreviation/{fl}", handlers.AbbreviationDelete)
 
+	// admin
+	http.HandleFunc("POST /swiki/admin-updatefulldb", handlers.AdminHandler)
+	http.HandleFunc("POST /swiki/admin-syncfulldb", handlers.AdminHandler)
+	http.HandleFunc("POST /swiki/analyse", handlers.AnalyzeHandler)
+
 	// search
 	http.HandleFunc("POST /swiki/search", handlers.SearchHandler)
 
@@ -81,6 +86,9 @@ func main() {
 	http.HandleFunc("OPTIONS /swiki/pages/exist/{title}", handlers.PagePreflightHandler)
 	http.HandleFunc("OPTIONS /swiki/pages/statistics", handlers.PagePreflightHandler)
 	http.HandleFunc("OPTIONS /swiki/search", handlers.PagePreflightHandler)
+	http.HandleFunc("OPTIONS /swiki/admin-updatefulldb", handlers.PagePreflightHandler)
+	http.HandleFunc("OPTIONS /swiki/admin-syncfulldb", handlers.PagePreflightHandler)
+	http.HandleFunc("OPTIONS /swiki/analyse", handlers.PagePreflightHandler)
 
 	fs := http.FileServer(http.Dir("./frontend"))
 	http.Handle("/", fs)

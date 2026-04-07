@@ -3,13 +3,33 @@ package persistencelocal
 import (
 	"fmt"
 	"log"
+	"os"
+	"swiki/helpers"
 	"swiki/model"
 	"swiki/persistence"
 	"time"
 )
 
-func Sync() {
+func UpdateSync() {
 	start := time.Now()
+	lastSync, err := os.ReadFile("lsync.txt")
+	if err != nil {
+		panic(err)
+	}
+
+	updatePages(string(lastSync))
+	updateImages(string(lastSync))
+	updateAbbreviations(string(lastSync))
+	updateLinks(string(lastSync))
+	elapsed := time.Since(start)
+	log.Printf("Sync complete total: %v", elapsed)
+}
+
+func Sync() {
+
+	start := time.Now()
+	clearDB()
+	CreateTables()
 
 	addPages()
 	addImages()
@@ -17,6 +37,13 @@ func Sync() {
 	addAbbreviations()
 	elapsed := time.Since(start)
 	log.Printf("Sync complete total: %v", elapsed)
+
+	data := []byte(helpers.GetCurrentDateTime())
+
+	err := os.WriteFile("lsync.txt", data, 0644)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func addPages() {
@@ -26,7 +53,6 @@ func addPages() {
 		return
 	}
 
-	start := time.Now()
 	for _, v := range categories {
 		fmt.Println(v)
 		pages, err := persistence.GetPagesFromCategoryWithContent(v)
@@ -45,9 +71,7 @@ func addPages() {
 			log.Printf("Added page %v", i)
 		}
 	}
-
-	elapsed := time.Since(start)
-	log.Printf("Sync complete pages: %v", elapsed)
+	log.Println("pages added")
 }
 
 func addImages() {
@@ -57,9 +81,8 @@ func addImages() {
 		return
 	}
 
-	start := time.Now()
 	for _, v := range pictureInfos {
-		pil := model.PictureInfoLocal{ImageSizeBytes: v.ImageSizeBytes, TursoId: v.Id}
+		pil := model.Picture{ImageSizeBytes: v.ImageSizeBytes, TursoId: v.Id}
 
 		result := AddImage(pil)
 		if !result {
@@ -69,9 +92,7 @@ func addImages() {
 
 		log.Printf("added image %v", pil.TursoId)
 	}
-
-	elapsed := time.Since(start)
-	log.Printf("Sync complete images: %v", elapsed)
+	log.Println("Images added")
 }
 
 func addLinks() {
@@ -81,7 +102,6 @@ func addLinks() {
 		return
 	}
 
-	start := time.Now()
 	for _, v := range categories {
 		fmt.Println(v)
 		links, err := persistence.GetLinksFromCategory(v)
@@ -100,13 +120,10 @@ func addLinks() {
 			log.Printf("Added link %v", i)
 		}
 	}
-
-	elapsed := time.Since(start)
-	log.Printf("Sync complete links: %v", elapsed)
+	log.Println("links added")
 }
 
 func addAbbreviations() {
-	start := time.Now()
 	abbreviations, err := persistence.GetAllAbbreviations()
 	if err != nil {
 		println(err)
@@ -122,7 +139,102 @@ func addAbbreviations() {
 		}
 		log.Printf("Added abbreviation %v, %v", abrLocal.TursoId, abr.Name)
 	}
+	log.Println("abbreviations added")
+}
 
-	elapsed := time.Since(start)
-	log.Printf("Sync complete abbreviations: %v", elapsed)
+// updated in this context means pages that have been added after last sync. Also all pages that have bene updated after last sync.
+func updatePages(lastSync string) {
+	pages, err := persistence.GetPagesFromDateAndAfterWithContent(lastSync)
+	if err != nil {
+		return
+	}
+	for _, p := range pages {
+		pl := model.PageLocal{Category: p.Category, Title: p.Title, Content: p.Content, Created: p.Created, Updated: p.Updated, TursoId: p.Id}
+		i, err := AddPage(pl)
+		if err != nil {
+			log.Printf("Error adding page %v: %v", p, err)
+			continue
+		}
+		log.Printf("Added page %v", i)
+	}
+
+	pages, err = persistence.GetUpdatedPagesFromDateAndAfterWithContent(lastSync)
+	if err != nil {
+		return
+	}
+	for _, p := range pages {
+		pl := model.PageLocal{Category: p.Category, Title: p.Title, Content: p.Content, Created: p.Created, Updated: p.Updated, TursoId: p.Id}
+		err := UpdatePage(pl)
+		if err != nil {
+			log.Printf("Error updating page %v: %v", p, err)
+			continue
+		}
+		log.Printf("Added page %v", pl.TursoId)
+	}
+}
+
+func updateImages(lastSync string) {
+	images, err := persistence.GetImagesFromDateAfter(lastSync)
+	if err != nil {
+		return
+	}
+	for _, img := range images {
+		imgLocal := model.Picture{Id: img.Id, ImageBytes: img.ImageBytes, Created: img.Created, nil}
+		succedeed := AddImage(imgLocal)
+		if !succedeed {
+			log.Printf("Error adding image %v", img.Id)
+			continue
+		}
+		log.Printf("Added image %v", img.Id)
+	}
+}
+
+func updateAbbreviations(lastSync string) {
+	abbreviations, err := persistence.GetAllAbbreviations()
+	if err != nil {
+		return
+	}
+	for _, abr := range abbreviations {
+		abbreviation, err := GetAbbreviation(abr.Name)
+		if err != nil {
+			log.Printf("Error reading abbriviation from local %v", abr.Name)
+			continue
+		}
+		if abbreviation == nil {
+			abbreviationLocal := model.AbbreviationLocal{Name: abr.Name, Description: abr.Description, TursoId: abr.Id}
+			i, err := AddAbbreviation(abbreviationLocal)
+			if err != nil {
+				log.Printf("Error adding abbreviation to local %v", abbreviationLocal.Name)
+				continue
+			}
+			log.Printf("added abbreviation to local id: %v", i)
+		}
+	}
+}
+
+func updateLinks(lastSync string) {
+
+}
+
+func clearDB() {
+	err := DropTable("pages")
+	if err != nil {
+		return
+	}
+	err = DropTable("abbreviations")
+	if err != nil {
+		return
+	}
+	err = DropTable("links")
+	if err != nil {
+		return
+	}
+	err = DropTable("pages")
+	if err != nil {
+		return
+	}
+	err = DropTable("pictures")
+	if err != nil {
+		return
+	}
 }

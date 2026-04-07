@@ -3,6 +3,7 @@ module swiki
 go 1.25.0
 
 require (
+	github.com/agnivade/levenshtein v1.2.1
 	github.com/gomarkdown/markdown v0.0.0-20240730141124-034f12af3bf6
 	github.com/kljensen/snowball v0.10.0
 	github.com/tursodatabase/libsql-client-go v0.0.0-20240902231107-85af5b9d094d
