@@ -533,20 +533,21 @@ func Get25biggestImages() (error, []model.PictureInfo) {
 		os.Exit(1)
 	}
 
-	rows, _ := database.Query("SELECT id, image_size_bytes FROM pictures WHERE image_size_bytes IS NOT NULL AND id NOT LIKE '%.gif' ORDER BY image_size_bytes DESC LIMIT 25;")
+	rows, _ := database.Query("SELECT id, image_size_bytes, image FROM pictures WHERE image_size_bytes IS NOT NULL AND id NOT LIKE '%.gif' ORDER BY image_size_bytes DESC LIMIT 25;")
 
 	defer rows.Close()
 	defer database.Close()
 
 	var id string
 	var image_size_bytes int
+	var image []byte
 
 	for rows.Next() {
-		err := rows.Scan(&id, &image_size_bytes)
+		err := rows.Scan(&id, &image_size_bytes, &image)
 		if err != nil {
 			return nil, response
 		}
-		response = append(response, model.PictureInfo{Id: id, ImageSizeBytes: image_size_bytes})
+		response = append(response, model.PictureInfo{Id: id, ImageSizeBytes: image_size_bytes, Image: image})
 	}
 	return nil, response
 }

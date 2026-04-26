@@ -82,7 +82,7 @@ func addImages() {
 	}
 
 	for _, v := range pictureInfos {
-		pil := model.Picture{ImageSizeBytes: v.ImageSizeBytes, TursoId: v.Id}
+		pil := model.Picture{ImageBytes: v.Image, Id: v.Id}
 
 		result := AddImage(pil)
 		if !result {
@@ -90,7 +90,7 @@ func addImages() {
 			return
 		}
 
-		log.Printf("added image %v", pil.TursoId)
+		log.Printf("added image %v", pil.Id)
 	}
 	log.Println("Images added")
 }
@@ -179,7 +179,7 @@ func updateImages(lastSync string) {
 		return
 	}
 	for _, img := range images {
-		imgLocal := model.Picture{Id: img.Id, ImageBytes: img.ImageBytes, Created: img.Created, nil}
+		imgLocal := model.Picture{Id: img.Id, ImageBytes: img.ImageBytes, Created: img.Created, Updated: img.Updated}
 		succedeed := AddImage(imgLocal)
 		if !succedeed {
 			log.Printf("Error adding image %v", img.Id)
@@ -200,15 +200,14 @@ func updateAbbreviations(lastSync string) {
 			log.Printf("Error reading abbriviation from local %v", abr.Name)
 			continue
 		}
-		if abbreviation == nil {
-			abbreviationLocal := model.AbbreviationLocal{Name: abr.Name, Description: abr.Description, TursoId: abr.Id}
-			i, err := AddAbbreviation(abbreviationLocal)
-			if err != nil {
-				log.Printf("Error adding abbreviation to local %v", abbreviationLocal.Name)
-				continue
-			}
-			log.Printf("added abbreviation to local id: %v", i)
+
+		abbreviationLocal := model.AbbreviationLocal{Name: abbreviation.Name, Description: abbreviation.Description, TursoId: abbreviation.Id}
+		i, err := AddAbbreviation(abbreviationLocal)
+		if err != nil {
+			log.Printf("Error adding abbreviation to local %v", abbreviationLocal.Name)
+			continue
 		}
+		log.Printf("added abbreviation to local id: %v", i)
 	}
 }
 
