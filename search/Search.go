@@ -10,11 +10,15 @@ import (
 	"swiki/helpers"
 	"swiki/model"
 	"swiki/persistence"
+	"sync"
 	"time"
 )
 
 var docs []model.Document
-var idx = index{}
+var (
+	idx   = index{}
+	idxMu sync.RWMutex
+)
 
 var stopwords = map[string]struct{}{
 	"a": {}, "about": {}, "above": {}, "after": {}, "again": {}, "against": {}, "all": {}, "am": {}, "an": {}, "and": {}, "any": {}, "are": {}, "aren't": {}, "as": {}, "at": {},

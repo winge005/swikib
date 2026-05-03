@@ -22,6 +22,12 @@ func main() {
 
 	getConfig()
 	persistence.SetConfig(config.Server.AccessToken)
+	if err := persistence.InitDB(); err != nil {
+		log.Fatalf("failed to initialize turso db: %v", err)
+	}
+	if err := persistencelocal.InitDB(); err != nil {
+		log.Fatalf("failed to initialize local db: %v", err)
+	}
 	persistence.CreateTables()
 	persistencelocal.CreateTables()
 	//persistencelocal.Sync()

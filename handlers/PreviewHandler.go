@@ -23,7 +23,9 @@ func PreviewHandler(w http.ResponseWriter, r *http.Request) {
 
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
-		log.Fatal(err)
+		log.Println("Error reading body:", err)
+		http.Error(w, "Error reading request body", http.StatusInternalServerError)
+		return
 	}
 	bodyString := string(bodyBytes)
 	splittedString := strings.Split(bodyString, "\r\n")

@@ -16,12 +16,22 @@ func ImageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	imageKeys, _ := r.URL.Query()["image"]
+	imageKeys, ok := r.URL.Query()["image"]
+	if !ok || len(imageKeys) == 0 {
+		http.Error(w, "image parameter missing", http.StatusBadRequest)
+		return
+	}
+
 	imageData := persistence.GetImageFrom(imageKeys[0])
+	if imageData == nil {
+		http.Error(w, "image not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Cache-Control", "public, max-age=604800") // 7 days
 	_, err := w.Write(imageData)
 	if err != nil {
 		log.Println("writing file to browser failed: " + imageKeys[0])
-		log.Fatal(err)
 		return
 	}
 }

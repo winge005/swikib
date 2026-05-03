@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 	"swiki/helpers"
 	"swiki/model"
@@ -13,39 +12,46 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+var db *sql.DB
 var dbName = "wiki.db"
 var driverName = "sqlite"
-
 var abbreviations = "CREATE TABLE IF NOT EXISTS abbreviations(id INTEGER PRIMARY KEY, name varchar(100) UNIQUE, description varchar(300), tursoid INTEGER)"
 var links = "CREATE TABLE IF NOT EXISTS links(id INTEGER PRIMARY KEY, category varchar(100), url varchar(300) UNIQUE, description varchar(250), created varchar(19), updated varchar(19), tursoid INTEGER)"
 var pages = "CREATE TABLE IF NOT EXISTS pages(id INTEGER PRIMARY KEY, category varchar(200), title varchar(255), content TEXT, created varchar(19), updated varchar(19), tursoid INTEGER)"
 var pictures = "CREATE TABLE IF NOT EXISTS pictures(id varchar(200), image BLOB, created varchar(19), updated varchar(19), tursoid varchar(200))"
 
+func InitDB() error {
+	var err error
+	db, err = sql.Open(driverName, dbName)
+	if err != nil {
+		return fmt.Errorf("failed to open localdb %s: %w", dbName, err)
+	}
+	return nil
+}
+
 func CreateTables() {
-	database, err := sql.Open(driverName, dbName)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open localdb %s: %s", dbName, err)
-		os.Exit(1)
+	if db == nil {
+		if err := InitDB(); err != nil {
+			log.Fatal(err)
+		}
 	}
 
-	defer database.Close()
-
-	_, err = database.Exec(abbreviations)
+	_, err := db.Exec(abbreviations)
 	if err != nil {
 		return
 	}
 
-	_, err = database.Exec(links)
+	_, err = db.Exec(links)
 	if err != nil {
 		return
 	}
 
-	_, err = database.Exec(pages)
+	_, err = db.Exec(pages)
 	if err != nil {
 		return
 	}
 
-	_, err = database.Exec(pictures)
+	_, err = db.Exec(pictures)
 	if err != nil {
 		return
 	}
@@ -54,14 +60,7 @@ func CreateTables() {
 func GetCategories() ([]string, error) {
 	var categories []string
 
-	database, err := sql.Open(driverName, dbName)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", dbName, err)
-		return categories, err
-	}
-	defer database.Close()
-
-	rows, err := database.Query("select DISTINCT category from pages order by category")
+	rows, err := db.Query("select DISTINCT category from pages order by category")
 	if err != nil {
 		log.Println(err.Error())
 		return categories, err
@@ -85,16 +84,12 @@ func GetCategories() ([]string, error) {
 func GetPagesFromCategoryWithContent(whereCategory string) ([]model.PageLocal, error) {
 	var pages []model.PageLocal
 
-	database, err := sql.Open(driverName, dbName)
+	rows, err := db.Query("select id, title, category, content, created, updated, tursoid from pages where category=?  order by title COLLATE NOCASE ASC", whereCategory)
 	if err != nil {
-		log.Println(err.Error())
-		return pages, err
+		return nil, err
 	}
 
-	rows, _ := database.Query("select id, title, category, content, created, updated, tursoid from pages where category=?  order by title COLLATE NOCASE ASC", whereCategory)
-
 	defer rows.Close()
-	defer database.Close()
 
 	var id int
 	var title string
@@ -125,16 +120,12 @@ func GetPagesFromCategoryWithContent(whereCategory string) ([]model.PageLocal, e
 func GetPagesFromCategoryWithoutContent(whereCategory string) ([]model.PageLocal, error) {
 	var pages []model.PageLocal
 
-	database, err := sql.Open(driverName, dbName)
+	rows, err := db.Query("select id, title, created, updated, tursoid from pages where category=?  order by title COLLATE NOCASE ASC", whereCategory)
 	if err != nil {
-		log.Println(err.Error())
-		return pages, err
+		return nil, err
 	}
 
-	rows, _ := database.Query("select id, title, created, updated, tursoid from pages where category=?  order by title COLLATE NOCASE ASC", whereCategory)
-
 	defer rows.Close()
-	defer database.Close()
 
 	var id int
 	var title string
@@ -167,13 +158,10 @@ func GetPagesFromCategoryWithoutContent(whereCategory string) ([]model.PageLocal
 func GetPage(idGiven int) (model.PageLocal, error) {
 	var page model.PageLocal
 
-	database, err := sql.Open(driverName, dbName)
+	rows, err := db.Query("select id, category, title, content, created, updated, tursoid from pages where id=?", idGiven)
 	if err != nil {
-		log.Println(err.Error())
 		return page, err
 	}
-	defer database.Close()
-	rows, _ := database.Query("select id, category, title, content, created, updated, tursoid from pages where id=?", idGiven)
 
 	defer rows.Close()
 
@@ -210,15 +198,11 @@ func GetPage(idGiven int) (model.PageLocal, error) {
 func GetImageFrom(id string) []byte {
 	response := make([]byte, 0)
 
-	database, err := sql.Open(driverName, dbName)
+	rows, err := db.Query("select image from pictures where id=?", id)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open localdb %s: %s", dbName, err)
-		os.Exit(1)
+		return nil
 	}
 
-	rows, _ := database.Query("select image from pictures where id=?", id)
-
-	defer database.Close()
 	defer rows.Close()
 
 	var image []byte
@@ -234,13 +218,7 @@ func GetImageFrom(id string) []byte {
 }
 
 func UpdatePage(updatedPage model.PageLocal) error {
-	database, err := sql.Open(driverName, dbName)
-	if err != nil {
-		return err
-	}
-	defer database.Close()
-
-	stmt, err := database.Prepare("UPDATE pages SET category=?, title=?, content=?, Updated=? WHERE tursoid = ?")
+	stmt, err := db.Prepare("UPDATE pages SET category=?, title=?, content=?, Updated=? WHERE tursoid = ?")
 	if err != nil {
 		return err
 	}
@@ -261,15 +239,9 @@ func UpdatePage(updatedPage model.PageLocal) error {
 }
 
 func AddPage(page model.PageLocal) (int, error) {
-	database, err := sql.Open(driverName, dbName)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open localdb %s: %s", dbName, err)
-		os.Exit(1)
-	}
-	defer database.Close()
 	var id int
 
-	stmt, err := database.Prepare("INSERT INTO pages (title, category, content, created, updated, tursoid) VALUES (?,?,?,?,?,?) RETURNING id")
+	stmt, err := db.Prepare("INSERT INTO pages (title, category, content, created, updated, tursoid) VALUES (?,?,?,?,?,?) RETURNING id")
 	if err != nil {
 		return 0, err
 	}
@@ -284,16 +256,10 @@ func AddPage(page model.PageLocal) (int, error) {
 }
 
 func GetPagesCount() (int, error) {
-	database, err := sql.Open(driverName, dbName)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open localdb %s: %s", dbName, err)
-		os.Exit(1)
-	}
-	defer database.Close()
-
-	rows, err := database.Query("SELECT COUNT() as count FROM Pages")
+	rows, err := db.Query("SELECT COUNT() as count FROM Pages")
 	if err != nil {
 		fmt.Printf("%s", err)
+		return 0, err
 	}
 	defer rows.Close()
 
@@ -310,14 +276,7 @@ func GetPagesCount() (int, error) {
 }
 
 func DeleteImage(id string) (int64, error) {
-	database, err := sql.Open(driverName, dbName)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", dbName, err)
-		os.Exit(1)
-	}
-	defer database.Close()
-
-	stmt, err := database.Prepare("delete from pictures where id=?")
+	stmt, err := db.Prepare("delete from pictures where id=?")
 	if err != nil {
 		return 0, err
 	}
@@ -337,19 +296,12 @@ func DeleteImage(id string) (int64, error) {
 }
 
 func AddImage(picture model.Picture) bool {
-	database, err := sql.Open(driverName, dbName)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open db %s: %s", dbName, err)
-		os.Exit(1)
-	}
-	defer database.Close()
-
-	stmt, err := database.Prepare("INSERT INTO pictures (id, image, created) VALUES (?,?,?)")
-	defer stmt.Close()
+	stmt, err := db.Prepare("INSERT INTO pictures (id, image, created) VALUES (?,?,?)")
 	if err != nil {
 		log.Println(err)
 		return false
 	}
+	defer stmt.Close()
 
 	res, err := stmt.Exec(picture.Id, picture.ImageBytes, picture.Created)
 	if err != nil {
@@ -367,14 +319,9 @@ func AddImage(picture model.Picture) bool {
 }
 
 func AddLink(newLink model.LinkLocal) (int, error) {
-	database, err := sql.Open(driverName, dbName)
-	if err != nil {
-		return 0, err
-	}
-	defer database.Close()
 	var id int
 
-	stmt, err := database.Prepare("INSERT INTO links(category, url, description, created, tursoid) VALUES (?,?,?,?,?) RETURNING id")
+	stmt, err := db.Prepare("INSERT INTO links(category, url, description, created, tursoid) VALUES (?,?,?,?,?) RETURNING id")
 	if err != nil {
 		return 0, err
 	}
@@ -390,15 +337,8 @@ func AddLink(newLink model.LinkLocal) (int, error) {
 }
 
 func AddAbbreviation(abbreviation model.AbbreviationLocal) (int, error) {
-	database, err := sql.Open(driverName, dbName)
-	if err != nil {
-		return 0, err
-	}
-
-	defer database.Close()
-
 	var id int
-	stmt, err := database.Prepare("INSERT INTO abbreviations (name, description, tursoid) VALUES (?,?,?) RETURNING id")
+	stmt, err := db.Prepare("INSERT INTO abbreviations (name, description, tursoid) VALUES (?,?,?) RETURNING id")
 	if err != nil {
 		return 0, err
 	}
@@ -412,13 +352,11 @@ func AddAbbreviation(abbreviation model.AbbreviationLocal) (int, error) {
 
 func GetAbbreviation(givenAbbreviation string) (model.AbbreviationLocal, error) {
 	var abbreviation model.AbbreviationLocal
-	database, err := sql.Open(driverName, dbName)
+
+	rows, err := db.Query("Select * from abbreviations where name=?", givenAbbreviation)
 	if err != nil {
 		return abbreviation, err
 	}
-
-	defer database.Close()
-	rows, _ := database.Query("Select * from abbreviations where name=?", givenAbbreviation)
 	defer rows.Close()
 
 	var id int
@@ -446,16 +384,9 @@ func GetAbbreviation(givenAbbreviation string) (model.AbbreviationLocal, error) 
 }
 
 func DropTable(tbl string) error {
-	database, err := sql.Open(driverName, dbName)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open localdb %s: %s", dbName, err)
-		return err
-	}
-	defer database.Close()
-
 	pages := fmt.Sprintf("DROP TABLE IF EXISTS %s;", tbl)
 
-	_, err = database.Exec(pages)
+	_, err := db.Exec(pages)
 	if err != nil {
 		return err
 	}
