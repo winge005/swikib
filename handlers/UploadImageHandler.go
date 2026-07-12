@@ -47,8 +47,8 @@ func UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, fh := range files {
-		file, err := fh.Open()
+	for i, _ := range files {
+		file, err := files[i].Open()
 		if err != nil {
 			http.Error(w, "cannot open part: "+err.Error(), http.StatusBadRequest)
 			return
@@ -57,7 +57,7 @@ func UploadImageHandler(w http.ResponseWriter, r *http.Request) {
 			_ = file.Close()
 		}(file)
 
-		name := filepath.Base(fh.Filename)
+		name := filepath.Base(files[i].Filename)
 		if !checkValidExtension(name) {
 			uploaded[name] = "extension not allowed"
 			continue
@@ -138,8 +138,8 @@ func checkValidExtension(name string) bool {
 	name = strings.ToLower(name)
 
 exit:
-	for _, item := range allowedExtensions {
-		if item == name {
+	for i, _ := range allowedExtensions {
+		if allowedExtensions[i] == name {
 			allowed = true
 			break exit
 		}

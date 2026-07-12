@@ -20,6 +20,12 @@ var links = "CREATE TABLE IF NOT EXISTS links(id INTEGER PRIMARY KEY, category v
 var pages = "CREATE TABLE IF NOT EXISTS pages(id INTEGER PRIMARY KEY, category varchar(200), title varchar(255), content TEXT, created varchar(19), updated varchar(19), tursoid INTEGER)"
 var pictures = "CREATE TABLE IF NOT EXISTS pictures(id varchar(200), image BLOB, created varchar(19), updated varchar(19), tursoid varchar(200))"
 
+//CREATE INDEX idx_pages_category
+//ON pages(category);
+//
+//CREATE INDEX idx_pages_title
+//ON pages(title);
+
 func InitDB() error {
 	var err error
 	db, err = sql.Open(driverName, dbName)

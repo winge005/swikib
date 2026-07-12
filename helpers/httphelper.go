@@ -61,8 +61,8 @@ func GetRequestInfo(r *http.Request) model.RequestData {
 		lastlineParts := strings.Split(lastline, ",")
 		kvMap := make(map[string]string)
 
-		for _, kv := range lastlineParts {
-			splitedKv := strings.Split(kv, ":")
+		for i, _ := range lastlineParts {
+			splitedKv := strings.Split(lastlineParts[i], ":")
 			splitedKv[0] = trimQuotes(splitedKv[0])
 			kvMap[splitedKv[0]] = trimQuotes(strings.ReplaceAll(splitedKv[1], "[k]", ","))
 		}

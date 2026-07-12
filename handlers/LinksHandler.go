@@ -28,8 +28,8 @@ func LinksGetCategoriesHandlerr(w http.ResponseWriter, r *http.Request) {
 
 	var response []string
 
-	for _, category := range categories {
-		response = append(response, category)
+	for i, _ := range categories {
+		response = append(response, categories[i])
 	}
 
 	responseJson, err := json.Marshal(response)

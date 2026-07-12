@@ -32,12 +32,12 @@ func PreviewHandler(w http.ResponseWriter, r *http.Request) {
 
 	formId := strings.ReplaceAll(splittedString[0], "-", "")
 	var content = ""
-	for id, line := range splittedString {
+	for id, _ := range splittedString {
 		if id > 2 {
-			if strings.Index(line, formId) != -1 {
+			if strings.Index(splittedString[id], formId) != -1 {
 				break
 			}
-			content += line + "\r\n"
+			content += splittedString[id] + "\r\n"
 		}
 	}
 	log.Println(content)

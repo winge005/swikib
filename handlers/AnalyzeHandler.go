@@ -23,20 +23,20 @@ func AnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, v := range categories {
-		pages, err := persistencelocal.GetPagesFromCategoryWithContent(v)
+	for i, _ := range categories {
+		pages, err := persistencelocal.GetPagesFromCategoryWithContent(categories[i])
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		pairs := findSimilarPages(pages, 3)
-		for _, p := range pairs {
+		for j, _ := range pairs {
 			fmt.Printf(
 				"%q <-> %q | distance = %d\n",
-				p.Page1.Title,
-				p.Page2.Title,
-				p.Distance,
+				pairs[j].Page1.Title,
+				pairs[j].Page2.Title,
+				pairs[j].Distance,
 			)
 		}
 	}

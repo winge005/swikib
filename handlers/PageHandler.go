@@ -176,9 +176,9 @@ func PageViewHandler(w http.ResponseWriter, r *http.Request) {
 
 // TODO: make this react on config
 func replaceImageTags(imagesFound []string, content *string) {
-	for _, v := range imagesFound {
-		*content = strings.Replace(*content, v, "http://localhost:5001/swiki/pages/image?image="+v, -1)
-		fmt.Println(v)
+	for i, _ := range imagesFound {
+		*content = strings.Replace(*content, imagesFound[i], "http://localhost:5001/swiki/pages/image?image="+imagesFound[i], -1)
+		fmt.Println(imagesFound[i])
 	}
 }
 
@@ -225,8 +225,8 @@ func PageHandlerGetCategories(w http.ResponseWriter, r *http.Request) {
 
 	var response []string
 
-	for _, category := range categories {
-		response = append(response, category)
+	for i, _ := range categories {
+		response = append(response, categories[i])
 	}
 
 	responseJson, err := json.Marshal(response)

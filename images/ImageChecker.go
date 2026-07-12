@@ -45,8 +45,8 @@ func CheckUneededImages() {
 		}
 		imagesFound := ProcessImagesFromHtml(page.Content)
 		if len(imagesFound) > 0 {
-			for _, v := range imagesFound {
-				imagesUsedInPages = append(imagesUsedInPages, v)
+			for i, _ := range imagesFound {
+				imagesUsedInPages = append(imagesUsedInPages, imagesFound[i])
 			}
 		}
 
@@ -85,8 +85,8 @@ func CheckUneededImages() {
 
 	fmt.Println(time.Since(currentTime), "pictures to delete", len(imagesToDelete))
 
-	for _, v := range imagesToDelete {
-		result, err := persistence.DeleteImage(v)
+	for i, _ := range imagesToDelete {
+		result, err := persistence.DeleteImage(imagesToDelete[i])
 		if err != nil {
 			fmt.Println(err.Error())
 		}
