@@ -24,9 +24,10 @@ var (
 
 var abbreviations = "CREATE TABLE IF NOT EXISTS abbreviations(id INTEGER PRIMARY KEY, name varchar(100) UNIQUE, description varchar(300))"
 var links = "CREATE TABLE IF NOT EXISTS links(id INTEGER PRIMARY KEY, category varchar(100), url varchar(300) UNIQUE, description varchar(250), created varchar(19), updated varchar(19))"
-var pages = "CREATE TABLE IF NOT EXISTS pages(id INTEGER, category varchar(200), title varchar(255), content TEXT, created varchar(19), updated varchar(19))"
+var pages = "CREATE TABLE IF NOT EXISTS pages(id INTEGER PRIMARY KEY, category varchar(200), title varchar(255), content TEXT, created varchar(19), updated varchar(19))"
 var pictures = "CREATE TABLE IF NOT EXISTS pictures(id varchar(200), image BLOB, created varchar(19), updated varchar(19))"
 var prePages = "CREATE TABLE IF NOT EXISTS prepages(id INTEGER PRIMARY KEY, url varchar(300) UNIQUE, created varchar(19))"
+var pages_fts = "CREATE VIRTUAL TABLE IF NOT EXISTS pages_fts USING fts5( title, content, content='pages', content_rowid='id' );"
 
 func SetConfig(token string) {
 	accesskeyTurso = token
@@ -77,6 +78,12 @@ func CreateTables() {
 	if err != nil {
 		return
 	}
+
+	_, err = db.Exec(pages_fts)
+	if err != nil {
+		return
+	}
+
 }
 
 func GetCategories() ([]string, error) {
@@ -1235,14 +1242,11 @@ func Getstatistics() model.Statistic {
 }
 
 func Play() {
-	stmt, err := db.Prepare("CREATE INDEX IF NOT EXISTS idx_pictures_size_desc ON pictures(image_size_bytes DESC, id);")
+
+	stmt, err := db.Prepare("INSERT INTO pages_fts(rowid, title, content) SELECT id, title, content FROM pages;")
 	if err != nil {
-		return
+		log.Fatal(err)
 	}
-
-	stmt.Exec()
-
 	defer stmt.Close()
-
-	fmt.Println("Prima de luxe")
+	stmt.Exec()
 }

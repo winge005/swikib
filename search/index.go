@@ -2,6 +2,7 @@ package search
 
 import (
 	"math"
+	"slices"
 	"sort"
 	"strings"
 	"swiki/model"
@@ -213,7 +214,7 @@ func (ix *index) phraseSearch(terms []string) []uint32 {
 	for i, p := range cur {
 		out[i] = p.DocID
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	return out
 }
 

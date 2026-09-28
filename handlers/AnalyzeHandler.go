@@ -45,7 +45,7 @@ func AnalyzeHandler(w http.ResponseWriter, r *http.Request) {
 func findSimilarPages(pages []model.PageLocal, maxDistance int) []SimilarPair {
 	var result []SimilarPair
 
-	for i := 0; i < len(pages); i++ {
+	for i := range pages {
 		for j := i + 1; j < len(pages); j++ {
 			d := levenshtein.ComputeDistance(pages[i].Content, pages[j].Content)
 			fmt.Printf("%v\n", d)

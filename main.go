@@ -101,7 +101,7 @@ func main() {
 
 	// go images.CheckUneededImages()
 
-	// persistence.Play()
+	persistence.Play()
 
 	go search.CreateIndex(false)
 

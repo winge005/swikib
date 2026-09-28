@@ -3,6 +3,7 @@ package images
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"swiki/persistence"
 	"time"
@@ -98,12 +99,7 @@ func CheckUneededImages() {
 }
 
 func contains(elems []string, v string) bool {
-	for _, s := range elems {
-		if v == s {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(elems, v)
 }
 
 func ProcessImagesFromHtml(html string) []string {

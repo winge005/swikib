@@ -31,21 +31,21 @@ func PreviewHandler(w http.ResponseWriter, r *http.Request) {
 	splittedString := strings.Split(bodyString, "\r\n")
 
 	formId := strings.ReplaceAll(splittedString[0], "-", "")
-	var content = ""
+	var content strings.Builder
 	for id, _ := range splittedString {
 		if id > 2 {
 			if strings.Index(splittedString[id], formId) != -1 {
 				break
 			}
-			content += splittedString[id] + "\r\n"
+			content.WriteString(splittedString[id] + "\r\n")
 		}
 	}
-	log.Println(content)
+	log.Println(content.String())
 
 	htmlFlags := html.CommonFlags | html.HrefTargetBlank
 	opts := html.RendererOptions{Flags: htmlFlags}
 	renderer := html.NewRenderer(opts)
-	result := string(markdown.ToHTML([]byte(content), nil, renderer))
+	result := string(markdown.ToHTML([]byte(content.String()), nil, renderer))
 
 	tmpl, err := template.ParseFiles("templates/pagepreview.html")
 	if tmpl == nil {
