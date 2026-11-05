@@ -11,7 +11,6 @@ import (
 )
 
 func AdminHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 
 	position := strings.LastIndex(strings.ToLower(r.Pattern), "/")
 	chosenAction := r.Pattern[position+1:]

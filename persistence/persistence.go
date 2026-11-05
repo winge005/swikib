@@ -38,11 +38,11 @@ func InitDB() error {
 	var err error
 	db, err = sql.Open("libsql", urlTurso)
 	if err != nil {
-		return fmt.Errorf("failed to open db %s: %w", urlTurso, err)
+		return fmt.Errorf("failed to open db: %w", err)
 	}
 	// Check connection
 	if err = db.Ping(); err != nil {
-		return fmt.Errorf("failed to ping db %s: %w", urlTurso, err)
+		return fmt.Errorf("failed to ping db: %w", err)
 	}
 	return nil
 }

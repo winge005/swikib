@@ -7,5 +7,5 @@ import (
 
 func WriteErrorResponse(w http.ResponseWriter, response string, errorNummer int) {
 	w.WriteHeader(errorNummer)
-	_, _ = fmt.Fprintf(w, response)
+	_, _ = fmt.Fprint(w, response)
 }

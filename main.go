@@ -2,16 +2,19 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"swiki/handlers"
+	"swiki/middleware"
 	"swiki/model"
 	"swiki/persistence"
 	"swiki/persistencelocal"
 	"swiki/search"
 	"syscall"
+	"time"
 
 	"gopkg.in/yaml.v2"
 )
@@ -21,7 +24,15 @@ var config = &model.Config{}
 func main() {
 
 	getConfig()
-	persistence.SetConfig(config.Server.AccessToken)
+	tursoToken := os.Getenv("SWIKI_TURSO_TOKEN")
+	if tursoToken == "" {
+		tursoToken = config.Server.AccessToken
+		log.Println("SWIKI_TURSO_TOKEN is not set: using server.accesstoken from config.yml")
+	}
+	if tursoToken == "" {
+		log.Fatal("no Turso token configured: set SWIKI_TURSO_TOKEN or server.accesstoken in config.yml")
+	}
+	persistence.SetConfig(tursoToken)
 	if err := persistence.InitDB(); err != nil {
 		log.Fatalf("failed to initialize turso db: %v", err)
 	}
@@ -105,26 +116,40 @@ func main() {
 
 	go search.CreateIndex(false)
 
-	srv := http.Server{}
+	authToken := os.Getenv("SWIKI_AUTH_TOKEN")
+	if authToken == "" {
+		log.Println("SWIKI_AUTH_TOKEN is not set: mutating API endpoints are disabled")
+	}
+
+	handler := middleware.New(middleware.Config{
+		AuthToken:      authToken,
+		AllowedOrigins: middleware.ParseAllowedOrigins(os.Getenv("SWIKI_CORS_ORIGINS")),
+	}, http.DefaultServeMux)
+
+	srv := &http.Server{
+		Addr:              ":" + config.Server.Port,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
 	sigs := make(chan os.Signal, 1)
-	done := make(chan struct{})
 
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-sigs
 		log.Println("got interruption signal")
-		if err := srv.Shutdown(context.TODO()); err != nil {
-			log.Printf("server shutdown returned an err: %!v\n", err)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(ctx); err != nil {
+			log.Printf("server shutdown returned an err: %v\n", err)
 		}
-		close(done)
-		os.Exit(0)
 	}()
 
 	persistence.PerformCache()
 
 	log.Printf("listening on port: %v\n", config.Server.Port)
 
-	if err := http.ListenAndServe(":"+config.Server.Port, nil); err != nil {
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
 }
@@ -143,9 +168,5 @@ func getConfig() {
 	d := yaml.NewDecoder(file)
 	if err := d.Decode(&config); err != nil {
 		panic(err)
-	}
-
-	if len(config.Server.AccessToken) <= 0 {
-		log.Println("Accesstoken: not available")
 	}
 }

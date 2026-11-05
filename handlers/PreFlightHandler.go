@@ -1,11 +1,7 @@
 package handlers
 
-import (
-	"net/http"
-	"swiki/helpers"
-)
+import "net/http"
 
 func PagePreflightHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	return
 }

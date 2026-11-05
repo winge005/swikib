@@ -9,7 +9,6 @@ import (
 )
 
 func ImageHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
@@ -37,7 +36,6 @@ func ImageHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ImageSizeHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))

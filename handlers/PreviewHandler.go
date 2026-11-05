@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"swiki/helpers"
 	"text/template"
 
 	"github.com/gomarkdown/markdown"
@@ -13,7 +12,6 @@ import (
 )
 
 func PreviewHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return

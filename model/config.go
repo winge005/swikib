@@ -2,7 +2,7 @@ package model
 
 type Config struct {
 	Server struct {
-		Port        string `yml:"port"`
-		AccessToken string `yml:"accesstoken"`
+		Port        string `yaml:"port"`
+		AccessToken string `yaml:"accesstoken"`
 	}
 }

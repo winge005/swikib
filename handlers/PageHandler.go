@@ -19,7 +19,6 @@ import (
 )
 
 func PageAddHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
@@ -72,7 +71,6 @@ func PageAddHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func PageUpdateHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
@@ -110,7 +108,6 @@ func PageUpdateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func PageDeleteHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
@@ -138,7 +135,6 @@ func PageDeleteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func PageViewHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
@@ -183,7 +179,6 @@ func replaceImageTags(imagesFound []string, content *string) {
 }
 
 func PageCategoriesHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
@@ -206,7 +201,6 @@ func PageCategoriesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func PageHandlerGetCategories(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
@@ -239,7 +233,6 @@ func PageHandlerGetCategories(w http.ResponseWriter, r *http.Request) {
 }
 
 func PrePageAddHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
@@ -273,7 +266,6 @@ func PrePageAddHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func PrePageGetAllHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
@@ -296,7 +288,6 @@ func PrePageGetAllHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func PrePageDeleteHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
@@ -319,7 +310,6 @@ func PrePageDeleteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func PageAlreadyUsedHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
@@ -346,7 +336,6 @@ func PageAlreadyUsedHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func PageGetStatistics(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
@@ -398,7 +387,6 @@ func PageGetStatistics(w http.ResponseWriter, r *http.Request) {
 }
 
 func PageEditHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return

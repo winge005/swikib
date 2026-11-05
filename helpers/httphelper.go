@@ -12,15 +12,6 @@ import (
 	"swiki/model"
 )
 
-func EnableCors(w *http.ResponseWriter) {
-	allowedHeaders := "Access-Control-Allow-Headers,Accept, Content-Type, Content-Length, Accept-Encoding, Authorization,X-CSRF-Token"
-	(*w).Header().Set("Access-Control-Allow-Origin", "*")
-	(*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, PATCH")
-	(*w).Header().Set("Access-Control-Allow-Headers", allowedHeaders)
-	(*w).Header().Add("Access-Control-Allow-Credentials", "true")
-
-}
-
 func WriteResponse(w http.ResponseWriter, response string) {
 	_, _ = io.WriteString(w, response)
 }

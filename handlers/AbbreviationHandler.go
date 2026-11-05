@@ -13,7 +13,6 @@ import (
 )
 
 func AbbreviationHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
@@ -42,7 +41,6 @@ func AbbreviationHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func AbbreviationDelete(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
@@ -58,7 +56,6 @@ func AbbreviationDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func AbbreviationAddHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return

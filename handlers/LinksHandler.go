@@ -14,7 +14,6 @@ import (
 )
 
 func LinksGetCategoriesHandlerr(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
@@ -43,7 +42,6 @@ func LinksGetCategoriesHandlerr(w http.ResponseWriter, r *http.Request) {
 }
 
 func LinksFromCategoryHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
@@ -68,7 +66,6 @@ func LinksFromCategoryHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func LinkViewHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
@@ -91,7 +88,6 @@ func LinkViewHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func LinkEditeHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
@@ -138,7 +134,6 @@ func LinkEditeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func LinkDeleteHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
@@ -167,7 +162,6 @@ func LinkDeleteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func LinksCategoryOptionsHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
@@ -194,7 +188,6 @@ func LinksCategoryOptionsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func LinkAddHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
@@ -240,7 +233,6 @@ func LinkAddHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func LinkUpdateHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return

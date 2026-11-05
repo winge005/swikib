@@ -11,7 +11,6 @@ import (
 )
 
 func SearchHandler(w http.ResponseWriter, r *http.Request) {
-	helpers.EnableCors(&w)
 	if (*r).Method == http.MethodOptions {
 		_, _ = w.Write([]byte("allowed"))
 		return
