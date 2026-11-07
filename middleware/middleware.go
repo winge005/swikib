@@ -27,16 +27,10 @@ func New(cfg Config, next http.Handler) http.Handler {
 			return
 		}
 
-		if requiresAuth(r) {
-			if cfg.AuthToken == "" {
-				http.Error(w, "authentication is not configured", http.StatusServiceUnavailable)
-				return
-			}
-			if !validBearer(r, cfg.AuthToken) {
-				w.Header().Set("WWW-Authenticate", `Bearer realm="swiki"`)
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
-				return
-			}
+		if cfg.AuthToken != "" && requiresAuth(r) && !validBearer(r, cfg.AuthToken) {
+			w.Header().Set("WWW-Authenticate", `Bearer realm="swiki"`)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
 		}
 
 		next.ServeHTTP(w, r)

@@ -12,6 +12,7 @@ import (
 	"swiki/helpers"
 	"swiki/model"
 	"swiki/persistence"
+	"swiki/search"
 	"time"
 
 	"github.com/gomarkdown/markdown"
@@ -64,6 +65,9 @@ func PageAddHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	page.Id = id
+	search.AddPage(page)
+
 	var response = model.ResponseMessage{Message: "added: " + strconv.Itoa(id)}
 	responseJson, err := json.Marshal(response)
 
@@ -104,6 +108,8 @@ func PageUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	search.UpdatePage(page)
+
 	helpers.WriteResponse(w, "")
 }
 
@@ -127,6 +133,8 @@ func PageDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	search.DeletePage(idInt)
 
 	var response = model.ResponseMessage{Message: "Deleted: " + strconv.Itoa(idInt)}
 	responseJson, err := json.Marshal(response)

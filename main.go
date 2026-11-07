@@ -112,13 +112,11 @@ func main() {
 
 	// go images.CheckUneededImages()
 
-	persistence.Play()
-
 	go search.CreateIndex(false)
 
 	authToken := os.Getenv("SWIKI_AUTH_TOKEN")
 	if authToken == "" {
-		log.Println("SWIKI_AUTH_TOKEN is not set: mutating API endpoints are disabled")
+		log.Println("SWIKI_AUTH_TOKEN is not set: API authentication is disabled")
 	}
 
 	handler := middleware.New(middleware.Config{

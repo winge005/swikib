@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sort"
-	"strings"
 	"swiki/helpers"
 	"swiki/model"
 	"swiki/persistence"
@@ -14,9 +12,8 @@ import (
 	"time"
 )
 
-var docs []model.Document
 var (
-	idx   = index{}
+	idx   = newIndex()
 	idxMu sync.RWMutex
 )
 
@@ -40,26 +37,34 @@ var stopwords = map[string]struct{}{
 }
 
 func CreateIndex(useCache bool) {
-	docs = nil
-	idx = index{}
-
 	if useCache && helpers.FileExists("index.json") {
+		idxMu.Lock()
+		candidate := newIndex()
 		file, err := os.Open("index.json")
 		if err == nil {
-			defer file.Close()
 			decoder := json.NewDecoder(file)
-			if err := decoder.Decode(&idx); err == nil && idx.Postings != nil && idx.N > 0 {
+			err = decoder.Decode(candidate)
+			file.Close()
+			if err == nil && candidate.ready() {
+				idx = candidate
+				idxMu.Unlock()
 				log.Println("Index loaded from cache")
 				return
 			}
-			// If we get here, the cache is incompatible or broken.
+		}
+		idxMu.Unlock()
+
+		if err != nil {
 			log.Printf("Cache incompatible or unreadable (%v). Rebuilding…", err)
 		} else {
-			log.Printf("Could not open cache: %v. Rebuilding…", err)
+			log.Println("Cache incompatible. Rebuilding…")
 		}
 	}
 
 	start := time.Now()
+
+	idxMu.Lock()
+	defer idxMu.Unlock()
 
 	categories, err := persistence.GetCategories()
 	if err != nil {
@@ -67,28 +72,28 @@ func CreateIndex(useCache bool) {
 		log.Fatal(err)
 	}
 
+	newIdx := newIndex()
+	docCount := 0
 	for _, category := range categories {
 		pages, err := persistence.GetPagesFromCategoryWithContent(category)
 		if err != nil {
-			log.Println("Error getting categories: ", err)
+			log.Println("Error getting pages: ", err)
 			log.Fatal(err)
 		}
 		for _, page := range pages {
-			doc := model.Document{
+			newIdx.addDocument(model.Document{
 				Title: page.Title,
 				Text:  page.Content,
-				ID:    len(docs),
+				ID:    docCount,
 				DbId:  page.Id,
-			}
-			docs = append(docs, doc)
+			})
+			docCount++
 		}
 	}
 
-	log.Printf("Loaded %d documents in %v", len(docs), time.Since(start))
+	idx = newIdx
+	log.Printf("Loaded and indexed %d documents in %v", docCount, time.Since(start))
 	start = time.Now()
-
-	idx.add(docs)
-	log.Printf("Indexed %d documents in %v", len(docs), time.Since(start))
 
 	file, err := os.Create("index.json")
 	if err != nil {
@@ -97,59 +102,75 @@ func CreateIndex(useCache bool) {
 	}
 	defer file.Close()
 	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(idx); err != nil {
 		fmt.Println("Error encoding JSON:", err)
 		return
 	}
 
-	fmt.Println("✅ JSON index saved")
+	log.Printf("Index cache saved in %v", time.Since(start))
+}
+
+func AddPage(page model.Page) {
+	idxMu.Lock()
+	defer idxMu.Unlock()
+
+	idx.addDocument(model.Document{
+		Title: page.Title,
+		Text:  page.Content,
+		DbId:  page.Id,
+	})
+}
+
+func UpdatePage(page model.Page) {
+	idxMu.Lock()
+	defer idxMu.Unlock()
+
+	idx.addDocument(model.Document{
+		Title: page.Title,
+		Text:  page.Content,
+		DbId:  page.Id,
+	})
+}
+
+func DeletePage(id int) {
+	idxMu.Lock()
+	defer idxMu.Unlock()
+
+	idx.deleteDocument(id)
 }
 
 func Search(query string) ([]model.Page, error) {
 	const maxItems = 40
 
-	// Optional: if user typed a quoted phrase, we boost those docs later
-	var phraseBoost map[uint32]bool
-	if strings.Contains(query, "\"") {
-		if terms := parseQuotedTerms(query); len(terms) > 0 {
-			ids := idx.phraseSearch(terms)
-			if len(ids) > 0 {
-				phraseBoost = make(map[uint32]bool, len(ids))
-				for _, id := range ids {
-					phraseBoost[id] = true
-				}
-			}
-		}
+	terms := analyze(query)
+	if len(terms) == 0 {
+		return []model.Page{}, nil
 	}
 
-	// Ranked search with BM25
-	hits := idx.bm25Search(query)
-	if len(hits) == 0 {
-		return nil, nil
-	}
-
-	// Boost phrase matches (if any), then sort again
-	if phraseBoost != nil {
-		for i := range hits {
-			if phraseBoost[hits[i].DocID] {
-				hits[i].Score *= 1.5
-			}
-		}
-		sort.Slice(hits, func(i, j int) bool { return hits[i].Score > hits[j].Score })
-	}
-
-	// Map internal DocID -> real DB ID using the new mapping (fixes DocID!=DBID)
-	pages := make([]model.Page, 0, maxItems)
-	for i := 0; i < len(hits) && len(pages) < maxItems; i++ {
+	idxMu.RLock()
+	hits := idx.search(terms)
+	dbIDs := make([]int, 0, maxItems)
+	for i := 0; i < len(hits) && len(dbIDs) < maxItems; i++ {
 		docID := hits[i].DocID
 		if int(docID) >= len(idx.DocID2DBID) {
 			continue
 		}
 		dbID := idx.DocID2DBID[docID]
+		if dbID == 0 {
+			continue
+		}
+		dbIDs = append(dbIDs, dbID)
+	}
+	idxMu.RUnlock()
+
+	pages := make([]model.Page, 0, len(dbIDs))
+	for _, dbID := range dbIDs {
 		page, err := persistence.GetPage(dbID)
 		if err != nil {
 			log.Printf("Page with DB ID %d not found, skipping.", dbID)
+			continue
+		}
+		if page.Id == 0 {
 			continue
 		}
 		pages = append(pages, page)

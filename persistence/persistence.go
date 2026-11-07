@@ -27,7 +27,7 @@ var links = "CREATE TABLE IF NOT EXISTS links(id INTEGER PRIMARY KEY, category v
 var pages = "CREATE TABLE IF NOT EXISTS pages(id INTEGER PRIMARY KEY, category varchar(200), title varchar(255), content TEXT, created varchar(19), updated varchar(19))"
 var pictures = "CREATE TABLE IF NOT EXISTS pictures(id varchar(200), image BLOB, created varchar(19), updated varchar(19))"
 var prePages = "CREATE TABLE IF NOT EXISTS prepages(id INTEGER PRIMARY KEY, url varchar(300) UNIQUE, created varchar(19))"
-var pages_fts = "CREATE VIRTUAL TABLE IF NOT EXISTS pages_fts USING fts5( title, content, content='pages', content_rowid='id' );"
+var dropPagesFTS = "DROP TABLE IF EXISTS pages_fts"
 
 func SetConfig(token string) {
 	accesskeyTurso = token
@@ -79,9 +79,9 @@ func CreateTables() {
 		return
 	}
 
-	_, err = db.Exec(pages_fts)
+	_, err = db.Exec(dropPagesFTS)
 	if err != nil {
-		return
+		log.Println("Error dropping pages_fts:", err)
 	}
 
 }
@@ -1239,14 +1239,4 @@ func Getstatistics() model.Statistic {
 	}
 
 	return rtn
-}
-
-func Play() {
-
-	stmt, err := db.Prepare("INSERT INTO pages_fts(rowid, title, content) SELECT id, title, content FROM pages;")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer stmt.Close()
-	stmt.Exec()
 }

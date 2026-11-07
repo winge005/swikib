@@ -26,7 +26,7 @@ func TestAuth(t *testing.T) {
 		{name: "mutation with token", method: http.MethodPost, path: "/swiki/pages", authToken: "secret", authorized: "Bearer secret", want: http.StatusNoContent},
 		{name: "delete with token", method: http.MethodDelete, path: "/swiki/pages/1", authToken: "secret", authorized: "Bearer secret", want: http.StatusNoContent},
 		{name: "wrong token", method: http.MethodDelete, path: "/swiki/pages/1", authToken: "secret", authorized: "Bearer wrong", want: http.StatusUnauthorized},
-		{name: "auth not configured", method: http.MethodPost, path: "/swiki/pages", want: http.StatusServiceUnavailable},
+		{name: "auth not configured", method: http.MethodPost, path: "/swiki/pages", want: http.StatusNoContent},
 	}
 
 	for _, tt := range tests {

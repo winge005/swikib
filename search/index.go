@@ -9,217 +9,174 @@ import (
 	"unicode"
 )
 
-// ---- Data structures ----
-
 type Posting struct {
-	DocID     uint32   `json:"d"`
-	Freq      uint32   `json:"f"`
-	Positions []uint32 `json:"p,omitempty"` // needed for phrase/proximity search (optional)
+	DocID     uint32 `json:"d"`
+	Freq      uint32 `json:"f"`
+	TitleFreq uint32 `json:"tf,omitempty"`
 }
 
-// index: inverted index + corpus stats + internal->DB id mapping
 type index struct {
-	Postings   map[string][]Posting `json:"postings"`   // term -> postings
-	N          uint32               `json:"N"`          // number of docs
-	DocLen     []uint32             `json:"doc_len"`    // docID -> token count
-	DF         map[string]uint32    `json:"df"`         // term -> document frequency
-	AvgDL      float64              `json:"avg_dl"`     // average doc length
-	DocID2DBID []int                `json:"docid2dbid"` // internal docID -> DB page ID
+	Postings   map[string][]Posting `json:"postings"`
+	N          uint32               `json:"N"`
+	DocID2DBID []int                `json:"docid2dbid"`
+	DBID2DocID map[int]uint32       `json:"dbid2docid"`
+	DocTerms   [][]string           `json:"doc_terms"`
 }
-
-// NOTE: we index Title + Text so titles get some chance to match strongly.
-func (ix *index) add(docs []model.Document) {
-	if ix.Postings == nil {
-		ix.Postings = make(map[string][]Posting, 1<<15)
-	}
-	if ix.DF == nil {
-		ix.DF = make(map[string]uint32, 1<<15)
-	}
-
-	ix.DocLen = make([]uint32, len(docs))
-	ix.DocID2DBID = make([]int, len(docs))
-
-	for i, d := range docs {
-		terms := analyze(d.Title + " " + d.Text)
-		ix.DocLen[i] = uint32(len(terms))
-		ix.DocID2DBID[i] = d.DbId // from your Document build in Search.go
-
-		seen := make(map[string]bool, 64)
-
-		for pos, term := range terms {
-			pl := ix.Postings[term]
-			// append new posting if this doc isn't yet the tail of the list
-			if len(pl) == 0 || pl[len(pl)-1].DocID != uint32(i) {
-				pl = append(pl, Posting{DocID: uint32(i)})
-			}
-			// update tail
-			p := &pl[len(pl)-1]
-			p.Freq++
-			p.Positions = append(p.Positions, uint32(pos))
-			pl[len(pl)-1] = *p
-			ix.Postings[term] = pl
-
-			if !seen[term] {
-				ix.DF[term]++
-				seen[term] = true
-			}
-		}
-	}
-	ix.N = uint32(len(docs))
-	var sum uint64
-	for _, L := range ix.DocLen {
-		sum += uint64(L)
-	}
-	if ix.N > 0 {
-		ix.AvgDL = float64(sum) / float64(ix.N)
-	}
-}
-
-// ---- Ranked search (BM25) ----
 
 type hit struct {
 	DocID uint32
 	Score float64
 }
 
-// bm25Search runs a standard BM25 ranking over the query terms.
-func (ix *index) bm25Search(query string) []hit {
-	qterms := analyze(query)
-	if len(qterms) == 0 {
-		return nil
+type termCount struct {
+	freq      uint32
+	titleFreq uint32
+}
+
+func newIndex() *index {
+	return &index{
+		Postings:   make(map[string][]Posting, 1<<15),
+		DBID2DocID: make(map[int]uint32),
+	}
+}
+
+func (ix *index) ready() bool {
+	return ix != nil &&
+		ix.Postings != nil &&
+		ix.DBID2DocID != nil &&
+		len(ix.DocID2DBID) == len(ix.DocTerms)
+}
+
+func (ix *index) add(docs []model.Document) {
+	for _, d := range docs {
+		ix.addDocument(d)
+	}
+}
+
+func (ix *index) addDocument(d model.Document) {
+	if docID, ok := ix.DBID2DocID[d.DbId]; ok {
+		ix.replaceDocument(docID, d)
+		return
 	}
 
-	// de-duplicate query terms (simple)
-	seen := make(map[string]struct{}, len(qterms))
-	tmp := qterms[:0]
-	for _, t := range qterms {
-		if _, ok := seen[t]; !ok {
-			seen[t] = struct{}{}
-			tmp = append(tmp, t)
+	docID := uint32(len(ix.DocID2DBID))
+	ix.DocID2DBID = append(ix.DocID2DBID, d.DbId)
+	ix.DocTerms = append(ix.DocTerms, nil)
+	ix.DBID2DocID[d.DbId] = docID
+	ix.indexDocument(docID, d)
+}
+
+func (ix *index) replaceDocument(docID uint32, d model.Document) {
+	ix.removeDocument(docID)
+	ix.DocID2DBID[docID] = d.DbId
+	ix.DBID2DocID[d.DbId] = docID
+	ix.indexDocument(docID, d)
+}
+
+func (ix *index) deleteDocument(dbID int) {
+	docID, ok := ix.DBID2DocID[dbID]
+	if !ok {
+		return
+	}
+	ix.removeDocument(docID)
+}
+
+func (ix *index) indexDocument(docID uint32, d model.Document) {
+	titleTerms := analyze(d.Title)
+	textTerms := analyze(d.Text)
+
+	counts := make(map[string]termCount, len(titleTerms)+len(textTerms))
+	for _, term := range titleTerms {
+		c := counts[term]
+		c.freq++
+		c.titleFreq++
+		counts[term] = c
+	}
+	for _, term := range textTerms {
+		c := counts[term]
+		c.freq++
+		counts[term] = c
+	}
+
+	terms := make([]string, 0, len(counts))
+	for term, c := range counts {
+		ix.Postings[term] = append(ix.Postings[term], Posting{
+			DocID:     docID,
+			Freq:      c.freq,
+			TitleFreq: c.titleFreq,
+		})
+		terms = append(terms, term)
+	}
+	sort.Strings(terms)
+
+	ix.DocTerms[docID] = terms
+	ix.N++
+}
+
+func (ix *index) removeDocument(docID uint32) {
+	if int(docID) >= len(ix.DocID2DBID) {
+		return
+	}
+
+	for _, term := range ix.DocTerms[docID] {
+		postings := ix.Postings[term]
+		postings = slices.DeleteFunc(postings, func(p Posting) bool {
+			return p.DocID == docID
+		})
+		if len(postings) == 0 {
+			delete(ix.Postings, term)
+		} else {
+			ix.Postings[term] = postings
 		}
 	}
-	qterms = tmp
 
-	const k1 = 1.2
-	const b = 0.75
+	if dbID := ix.DocID2DBID[docID]; dbID != 0 {
+		delete(ix.DBID2DocID, dbID)
+	}
 
+	ix.DocID2DBID[docID] = 0
+	ix.DocTerms[docID] = nil
+	if ix.N > 0 {
+		ix.N--
+	}
+}
+
+func (ix *index) search(terms []string) []hit {
+	seen := make(map[string]struct{}, len(terms))
 	scores := make(map[uint32]float64, 256)
 
-	for _, term := range qterms {
-		df := float64(ix.DF[term])
-		if df == 0 {
+	for _, term := range terms {
+		if _, ok := seen[term]; ok {
 			continue
 		}
-		idf := math.Log((float64(ix.N)-df+0.5)/(df+0.5) + 1.0)
+		seen[term] = struct{}{}
 
 		for _, p := range ix.Postings[term] {
-			tf := float64(p.Freq)
-			dl := float64(ix.DocLen[p.DocID])
-			den := tf + k1*(1.0-b+b*dl/ix.AvgDL)
-			score := idf * (tf * (k1 + 1.0) / den)
-
-			// light early-position boost (often captures title/heading/first tokens)
-			if len(p.Positions) > 0 && p.Positions[0] < 10 {
-				score *= 1.15
-			}
+			score := 1.0
+			score += 0.5 * math.Log1p(float64(p.Freq))
+			score += 1.5 * math.Log1p(float64(p.TitleFreq))
 			scores[p.DocID] += score
 		}
 	}
 
 	out := make([]hit, 0, len(scores))
-	for id, s := range scores {
-		out = append(out, hit{DocID: id, Score: s})
+	for docID, score := range scores {
+		out = append(out, hit{DocID: docID, Score: score})
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Score > out[j].Score })
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Score != out[j].Score {
+			return out[i].Score > out[j].Score
+		}
+		return out[i].DocID < out[j].DocID
+	})
 	return out
 }
-
-// ---- (Optional) phrase support helpers ----
-// Keep these only if you want quoted-phrase boosting later.
 
 func tokenize(text string) []string {
 	return strings.FieldsFunc(text, func(r rune) bool {
-		// Split on any character that is not a letter or a number.
 		return !unicode.IsLetter(r) && !unicode.IsNumber(r)
 	})
 }
-
-func parseQuotedTerms(q string) []string {
-	i := strings.IndexByte(q, '"')
-	if i < 0 {
-		return nil
-	}
-	j := strings.IndexByte(q[i+1:], '"')
-	if j < 0 {
-		return nil
-	}
-	j = i + 1 + j
-	return analyze(q[i+1 : j])
-}
-
-func intersectPhrase(a, b []Posting, gap uint32) []Posting {
-	i, j := 0, 0
-	out := make([]Posting, 0)
-	for i < len(a) && j < len(b) {
-		if a[i].DocID == b[j].DocID {
-			pa, pb := a[i].Positions, b[j].Positions
-			x, y := 0, 0
-			found := false
-			for x < len(pa) && y < len(pb) {
-				target := pa[x] + gap
-				if pb[y] == target {
-					found = true
-					break
-				}
-				if pb[y] < target {
-					y++
-				} else {
-					x++
-				}
-			}
-			if found {
-				out = append(out, Posting{DocID: a[i].DocID})
-			}
-			i++
-			j++
-		} else if a[i].DocID < b[j].DocID {
-			i++
-		} else {
-			j++
-		}
-	}
-	return out
-}
-
-func (ix *index) phraseSearch(terms []string) []uint32 {
-	if len(terms) == 0 {
-		return nil
-	}
-	lists := make([][]Posting, 0, len(terms))
-	for _, t := range terms {
-		pl := ix.Postings[t]
-		if len(pl) == 0 {
-			return nil
-		}
-		lists = append(lists, pl)
-	}
-	cur := lists[0]
-	for k := 1; k < len(lists); k++ {
-		cur = intersectPhrase(cur, lists[k], 1) // exact adjacency
-		if len(cur) == 0 {
-			return nil
-		}
-	}
-	out := make([]uint32, len(cur))
-	for i, p := range cur {
-		out[i] = p.DocID
-	}
-	slices.Sort(out)
-	return out
-}
-
-// ---- Analyzer pipeline (kept as in your code) ----
-// We reuse your lowercaseFilter, stopwordFilter, and stemmerFilter from filter.go.
 
 func analyze(text string) []string {
 	tokens := tokenize(text)
