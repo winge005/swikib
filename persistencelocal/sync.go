@@ -12,6 +12,7 @@ import (
 
 func UpdateSync() {
 	start := time.Now()
+	setProgress(1, "Laatste sync-tijd lezen...")
 	lastSync, err := os.ReadFile("lsync.txt")
 	if err != nil {
 		panic(err)
@@ -21,6 +22,7 @@ func UpdateSync() {
 	updateImages(string(lastSync))
 	updateAbbreviations(string(lastSync))
 	updateLinks(string(lastSync))
+	setProgress(100, "Update voltooid")
 	elapsed := time.Since(start)
 	log.Printf("Sync complete total: %v", elapsed)
 }
@@ -28,13 +30,16 @@ func UpdateSync() {
 func Sync() {
 
 	start := time.Now()
+	setProgress(1, "Lokale database leegmaken...")
 	clearDB()
 	CreateTables()
+	setProgress(3, "Tabellen aangemaakt")
 
 	addPages()
 	addImages()
 	addLinks()
 	addAbbreviations()
+	setProgress(100, "Volledige sync voltooid")
 	elapsed := time.Since(start)
 	log.Printf("Sync complete total: %v", elapsed)
 
@@ -53,7 +58,13 @@ func addPages() {
 		return
 	}
 
-	for _, v := range categories {
+	total, err := persistence.GetPagesCount()
+	if err != nil || total <= 0 {
+		total = 0
+	}
+
+	processed := 0
+	for ci, v := range categories {
 		fmt.Println(v)
 		pages, err := persistence.GetPagesFromCategoryWithContent(v)
 		if err != nil {
@@ -68,9 +79,16 @@ func addPages() {
 				log.Printf("Error adding page %v: %v", p, err)
 				continue
 			}
+			processed++
+			if total > 0 {
+				setProgress(stepPercent(3, 62, processed, total), fmt.Sprintf("Pagina's: %d/%d", processed, total))
+			} else {
+				setProgress(stepPercent(3, 62, ci+1, len(categories)), fmt.Sprintf("Categorieën: %d/%d", ci+1, len(categories)))
+			}
 			log.Printf("Added page %v", i)
 		}
 	}
+	setProgress(65, "Pagina's toegevoegd")
 	log.Println("pages added")
 }
 
@@ -81,7 +99,8 @@ func addImages() {
 		return
 	}
 
-	for _, v := range pictureInfos {
+	total := len(pictureInfos)
+	for i, v := range pictureInfos {
 		pil := model.Picture{ImageBytes: v.Image, Id: v.Id}
 
 		result := AddImage(pil)
@@ -90,8 +109,10 @@ func addImages() {
 			return
 		}
 
+		setProgress(stepPercent(65, 20, i+1, total), fmt.Sprintf("Afbeeldingen: %d/%d", i+1, total))
 		log.Printf("added image %v", pil.Id)
 	}
+	setProgress(85, "Afbeeldingen toegevoegd")
 	log.Println("Images added")
 }
 
@@ -102,7 +123,7 @@ func addLinks() {
 		return
 	}
 
-	for _, v := range categories {
+	for ci, v := range categories {
 		fmt.Println(v)
 		links, err := persistence.GetLinksFromCategory(v)
 		if err != nil {
@@ -119,7 +140,10 @@ func addLinks() {
 			}
 			log.Printf("Added link %v", i)
 		}
+
+		setProgress(stepPercent(85, 10, ci+1, len(categories)), fmt.Sprintf("Links: categorie %d/%d", ci+1, len(categories)))
 	}
+	setProgress(95, "Links toegevoegd")
 	log.Println("links added")
 }
 
@@ -130,71 +154,85 @@ func addAbbreviations() {
 		return
 	}
 
-	for _, abr := range abbreviations {
+	total := len(abbreviations)
+	for i, abr := range abbreviations {
 		abrLocal := model.AbbreviationLocal{Name: abr.Name, Description: abr.Description, TursoId: abr.Id}
-		i, err := AddAbbreviation(abrLocal)
+		added, err := AddAbbreviation(abrLocal)
 		if err != nil {
-			log.Printf("Error adding abbreviation %v: %v", i, err)
+			log.Printf("Error adding abbreviation %v: %v", added, err)
 			continue
 		}
+		setProgress(stepPercent(95, 5, i+1, total), fmt.Sprintf("Afkortingen: %d/%d", i+1, total))
 		log.Printf("Added abbreviation %v, %v", abrLocal.TursoId, abr.Name)
 	}
+	setProgress(100, "Afkortingen toegevoegd")
 	log.Println("abbreviations added")
 }
 
 // updated in this context means pages that have been added after last sync. Also all pages that have bene updated after last sync.
 func updatePages(lastSync string) {
+	setProgress(5, "Nieuwe pagina's ophalen...")
 	pages, err := persistence.GetPagesFromDateAndAfterWithContent(lastSync)
 	if err != nil {
 		return
 	}
-	for _, p := range pages {
+	total := len(pages)
+	for i, p := range pages {
 		pl := model.PageLocal{Category: p.Category, Title: p.Title, Content: p.Content, Created: p.Created, Updated: p.Updated, TursoId: p.Id}
-		i, err := AddPage(pl)
+		added, err := AddPage(pl)
 		if err != nil {
 			log.Printf("Error adding page %v: %v", p, err)
 			continue
 		}
-		log.Printf("Added page %v", i)
+		setProgress(stepPercent(5, 35, i+1, total), fmt.Sprintf("Nieuwe pagina's: %d/%d", i+1, total))
+		log.Printf("Added page %v", added)
 	}
 
+	setProgress(40, "Gewijzigde pagina's ophalen...")
 	pages, err = persistence.GetUpdatedPagesFromDateAndAfterWithContent(lastSync)
 	if err != nil {
 		return
 	}
-	for _, p := range pages {
+	total = len(pages)
+	for i, p := range pages {
 		pl := model.PageLocal{Category: p.Category, Title: p.Title, Content: p.Content, Created: p.Created, Updated: p.Updated, TursoId: p.Id}
 		err := UpdatePage(pl)
 		if err != nil {
 			log.Printf("Error updating page %v: %v", p, err)
 			continue
 		}
-		log.Printf("Added page %v", pl.TursoId)
+		setProgress(stepPercent(40, 30, i+1, total), fmt.Sprintf("Gewijzigde pagina's: %d/%d", i+1, total))
+		log.Printf("Updated page %v", pl.TursoId)
 	}
 }
 
 func updateImages(lastSync string) {
+	setProgress(70, "Afbeeldingen ophalen...")
 	images, err := persistence.GetImagesFromDateAfter(lastSync)
 	if err != nil {
 		return
 	}
-	for _, img := range images {
+	total := len(images)
+	for i, img := range images {
 		imgLocal := model.Picture{Id: img.Id, ImageBytes: img.ImageBytes, Created: img.Created, Updated: img.Updated}
 		succedeed := AddImage(imgLocal)
 		if !succedeed {
 			log.Printf("Error adding image %v", img.Id)
 			continue
 		}
+		setProgress(stepPercent(70, 20, i+1, total), fmt.Sprintf("Afbeeldingen: %d/%d", i+1, total))
 		log.Printf("Added image %v", img.Id)
 	}
 }
 
 func updateAbbreviations(lastSync string) {
+	setProgress(90, "Afkortingen ophalen...")
 	abbreviations, err := persistence.GetAllAbbreviations()
 	if err != nil {
 		return
 	}
-	for _, abr := range abbreviations {
+	total := len(abbreviations)
+	for i, abr := range abbreviations {
 		abbreviation, err := GetAbbreviation(abr.Name)
 		if err != nil {
 			log.Printf("Error reading abbriviation from local %v", abr.Name)
@@ -202,12 +240,13 @@ func updateAbbreviations(lastSync string) {
 		}
 
 		abbreviationLocal := model.AbbreviationLocal{Name: abbreviation.Name, Description: abbreviation.Description, TursoId: abbreviation.Id}
-		i, err := AddAbbreviation(abbreviationLocal)
+		added, err := AddAbbreviation(abbreviationLocal)
 		if err != nil {
 			log.Printf("Error adding abbreviation to local %v", abbreviationLocal.Name)
 			continue
 		}
-		log.Printf("added abbreviation to local id: %v", i)
+		setProgress(stepPercent(90, 10, i+1, total), fmt.Sprintf("Afkortingen: %d/%d", i+1, total))
+		log.Printf("added abbreviation to local id: %v", added)
 	}
 }
 

@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
+	"path/filepath"
+	"strings"
 	"swiki/handlers"
 	"swiki/middleware"
 	"swiki/model"
@@ -51,6 +54,8 @@ func main() {
 	http.HandleFunc("PUT /swiki/pages/{id}", handlers.PageUpdateHandler)
 	http.HandleFunc("DELETE /swiki/pages/{id}", handlers.PageDeleteHandler)
 	http.HandleFunc("POST /swiki/pages", handlers.PageAddHandler)
+	http.HandleFunc("POST /swiki/pages/similar", handlers.SimilarPagesHandler)
+	http.HandleFunc("GET /swiki/pages/similar/status", handlers.PagesFTSStatusHandler)
 	http.HandleFunc("POST /swiki/page/preview", handlers.PreviewHandler)
 	http.HandleFunc("POST /swiki/pages/uploadImage", handlers.UploadImageHandler)
 	http.HandleFunc("GET /swiki/pages/created", handlers.SpecialsHandler)
@@ -87,6 +92,7 @@ func main() {
 	http.HandleFunc("POST /swiki/admin-updatefulldb", handlers.AdminHandler)
 	http.HandleFunc("POST /swiki/admin-syncfulldb", handlers.AdminHandler)
 	http.HandleFunc("POST /swiki/analyse", handlers.AnalyzeHandler)
+	http.HandleFunc("GET /swiki/progress", handlers.ProgressHandler)
 
 	// search
 	http.HandleFunc("POST /swiki/search", handlers.SearchHandler)
@@ -94,6 +100,8 @@ func main() {
 	// options
 	http.HandleFunc("OPTIONS /swiki/pages/{id}", handlers.PagePreflightHandler)
 	http.HandleFunc("OPTIONS /swiki/pages", handlers.PagePreflightHandler)
+	http.HandleFunc("OPTIONS /swiki/pages/similar", handlers.PagePreflightHandler)
+	http.HandleFunc("OPTIONS /swiki/pages/similar/status", handlers.PagePreflightHandler)
 	http.HandleFunc("OPTIONS /swiki/links/{id}", handlers.PagePreflightHandler)
 	http.HandleFunc("OPTIONS /swiki/links", handlers.PagePreflightHandler)
 	http.HandleFunc("OPTIONS /swiki/prepages", handlers.PagePreflightHandler)
@@ -106,9 +114,9 @@ func main() {
 	http.HandleFunc("OPTIONS /swiki/admin-updatefulldb", handlers.PagePreflightHandler)
 	http.HandleFunc("OPTIONS /swiki/admin-syncfulldb", handlers.PagePreflightHandler)
 	http.HandleFunc("OPTIONS /swiki/analyse", handlers.PagePreflightHandler)
+	http.HandleFunc("OPTIONS /swiki/progress", handlers.PagePreflightHandler)
 
-	fs := http.FileServer(http.Dir("./frontend"))
-	http.Handle("/", fs)
+	http.Handle("/", spaHandler("./frontend"))
 
 	// go images.CheckUneededImages()
 
@@ -150,6 +158,40 @@ func main() {
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
+}
+
+// spaHandler serves static files and falls back to index.html so that
+// deep links (Angular routes) keep working after a browser refresh.
+func spaHandler(dir string) http.Handler {
+	fileServer := http.FileServer(http.Dir(dir))
+	indexFile := filepath.Join(dir, "index.html")
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			http.NotFound(w, r)
+			return
+		}
+
+		if strings.HasPrefix(r.URL.Path, "/swiki/") {
+			http.NotFound(w, r)
+			return
+		}
+
+		rel := strings.TrimPrefix(path.Clean("/"+r.URL.Path), "/")
+		filePath := filepath.Join(dir, filepath.FromSlash(rel))
+
+		if info, err := os.Stat(filePath); err == nil && !info.IsDir() {
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+
+		if ext := path.Ext(rel); ext != "" && ext != ".html" {
+			http.NotFound(w, r)
+			return
+		}
+
+		http.ServeFile(w, r, indexFile)
+	})
 }
 
 func getConfig() {
