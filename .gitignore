@@ -4,3 +4,4 @@
 # Ignore idea files
 .idea
 index.json
+analysis-state.json

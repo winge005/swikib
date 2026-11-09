@@ -92,6 +92,12 @@ func main() {
 	http.HandleFunc("POST /swiki/admin-updatefulldb", handlers.AdminHandler)
 	http.HandleFunc("POST /swiki/admin-syncfulldb", handlers.AdminHandler)
 	http.HandleFunc("POST /swiki/analyse", handlers.AnalyzeHandler)
+	http.HandleFunc("POST /swiki/analyse/pause", handlers.AnalyzePauseHandler)
+	http.HandleFunc("POST /swiki/analyse/resume", handlers.AnalyzeResumeHandler)
+	http.HandleFunc("GET /swiki/analyse/state", handlers.AnalyzeStateHandler)
+	http.HandleFunc("GET /swiki/analyse/result", handlers.AnalyzeResultHandler)
+	http.HandleFunc("GET /swiki/analyse/page/{id}", handlers.AnalyzePageHandler)
+	http.HandleFunc("DELETE /swiki/analyse/page/{id}", handlers.AnalyzeDeletePageHandler)
 	http.HandleFunc("GET /swiki/progress", handlers.ProgressHandler)
 
 	// search
@@ -114,6 +120,11 @@ func main() {
 	http.HandleFunc("OPTIONS /swiki/admin-updatefulldb", handlers.PagePreflightHandler)
 	http.HandleFunc("OPTIONS /swiki/admin-syncfulldb", handlers.PagePreflightHandler)
 	http.HandleFunc("OPTIONS /swiki/analyse", handlers.PagePreflightHandler)
+	http.HandleFunc("OPTIONS /swiki/analyse/pause", handlers.PagePreflightHandler)
+	http.HandleFunc("OPTIONS /swiki/analyse/resume", handlers.PagePreflightHandler)
+	http.HandleFunc("OPTIONS /swiki/analyse/state", handlers.PagePreflightHandler)
+	http.HandleFunc("OPTIONS /swiki/analyse/result", handlers.PagePreflightHandler)
+	http.HandleFunc("OPTIONS /swiki/analyse/page/{id}", handlers.PagePreflightHandler)
 	http.HandleFunc("OPTIONS /swiki/progress", handlers.PagePreflightHandler)
 
 	http.Handle("/", spaHandler("./frontend"))

@@ -184,7 +184,7 @@ func GetPage(idGiven int) (model.PageLocal, error) {
 	}
 
 	for rows.Next() {
-		err := rows.Scan(&id, &category, &title, &content, &created, &updated)
+		err := rows.Scan(&id, &category, &title, &content, &created, &updated, &tursoid)
 		if err != nil {
 			return page, err
 		}
@@ -199,6 +199,29 @@ func GetPage(idGiven int) (model.PageLocal, error) {
 	}
 
 	return page, nil
+}
+
+func DeletePage(idGiven int) error {
+	stmt, err := db.Prepare("delete from pages where id=?")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	res, err := stmt.Exec(idGiven)
+	if err != nil {
+		return err
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected != 1 {
+		return errors.New("nothing deleted")
+	}
+
+	return nil
 }
 
 func GetImageFrom(id string) []byte {

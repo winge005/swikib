@@ -32,46 +32,91 @@ type analysisDoc struct {
 	shingles map[string]struct{}
 }
 
-func FindSimilarPagePairs() ([]SimilarPagePair, error) {
+// RunAnalysis analyses all local pages for duplicates. When resume is nil a new
+// analysis is started. The returned bool is true when the analysis stopped
+// because a pause was requested; in that case the checkpoint has been saved.
+func RunAnalysis(resume *AnalysisState) (bool, error) {
 	analysisMu.Lock()
 	defer analysisMu.Unlock()
 
 	if db == nil {
 		if err := InitDB(); err != nil {
-			return nil, err
+			return false, err
 		}
 	}
 
 	categories, err := GetCategories()
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
-	pairs := make([]SimilarPagePair, 0)
-	totalPages, _ := GetPagesCount()
-	prepared := 0
-	analyzed := 0
+	totalPages, err := GetPagesCount()
+	if err != nil {
+		totalPages = 0
+	}
 
-	for _, category := range categories {
+	state := &AnalysisState{Pairs: []SimilarPagePair{}}
+	startCategory := 0
+	startPageIndex := 0
+	startPageID := 0
+	completedPages := 0
+	initialPercent := 0
+
+	if resume != nil {
+		state = resume
+		if state.Pairs == nil {
+			state.Pairs = []SimilarPagePair{}
+		}
+		startPageIndex = state.PageIndex
+		startPageID = state.LastPageID
+		completedPages = state.CompletedPages
+		initialPercent = state.Percent
+		startCategory = resolveCategoryIndex(categories, state.Category, state.CategoryIndex)
+		state.Paused = false
+		state.Completed = false
+	}
+
+	if totalPages <= 0 {
+		totalPages = completedPages + 1
+	}
+
+	setProgress(initialPercent, "Analyseren...")
+
+	for ci := startCategory; ci < len(categories); ci++ {
+		category := categories[ci]
+
 		pageList, err := GetPagesFromCategoryWithContent(category)
 		if err != nil {
-			return nil, err
+			return false, err
 		}
 		if len(pageList) < 2 {
+			completedPages += len(pageList)
 			continue
 		}
 
 		docs := make([]analysisDoc, len(pageList))
 		for i, page := range pageList {
+			if PauseRequested() {
+				nextIndex := 0
+				lastID := 0
+				if ci == startCategory && resume != nil {
+					nextIndex = startPageIndex
+					lastID = startPageID
+				}
+				if err := savePausedState(state, category, ci, nextIndex, lastID, completedPages, totalPages); err != nil {
+					return false, err
+				}
+				return true, nil
+			}
+
 			docs[i] = analysisDoc{
 				page:     page,
 				tokens:   similarity.Tokenize(page.Title),
 				shingles: similarity.Shingles(page.Content, 3),
 			}
-			prepared++
-			if totalPages > 0 {
-				setProgress(stepPercent(0, 40, prepared, totalPages), fmt.Sprintf("Voorbereiden: %d/%d pagina's", prepared, totalPages))
-			}
+
+			prepared := completedPages + i + 1
+			setProgress(stepPercent(0, 40, prepared, totalPages), fmt.Sprintf("Voorbereiden: %d/%d pagina's", prepared, totalPages))
 		}
 
 		index := make(map[string][]int)
@@ -81,13 +126,33 @@ func FindSimilarPagePairs() ([]SimilarPagePair, error) {
 			}
 		}
 
-		seen := make(map[[2]int]bool)
+		analyzeFrom := 0
+		if ci == startCategory && resume != nil {
+			analyzeFrom = resolveStartIndex(docs, startPageIndex, startPageID)
+		}
 
-		for i := range docs {
-			analyzed++
-			if totalPages > 0 {
-				setProgress(stepPercent(40, 60, analyzed, totalPages), fmt.Sprintf("Analyseren: %d/%d pagina's", analyzed, totalPages))
+		seen := make(map[[2]int]bool)
+		for _, pair := range state.Pairs {
+			if pair.Category == category {
+				seen[[2]int{pair.Page1Id, pair.Page2Id}] = true
 			}
+		}
+
+		for i := analyzeFrom; i < len(docs); i++ {
+			if PauseRequested() {
+				lastID := 0
+				if i > 0 {
+					lastID = docs[i-1].page.Id
+				}
+				if err := savePausedState(state, category, ci, i, lastID, completedPages, totalPages); err != nil {
+					return false, err
+				}
+				return true, nil
+			}
+
+			analyzed := completedPages + i + 1
+			setProgress(stepPercent(40, 60, analyzed, totalPages), fmt.Sprintf("Analyseren: %d/%d pagina's", analyzed, totalPages))
+
 			overlap := make(map[int]int)
 			for shingle := range docs[i].shingles {
 				postings := index[shingle]
@@ -134,7 +199,7 @@ func FindSimilarPagePairs() ([]SimilarPagePair, error) {
 					continue
 				}
 
-				pairs = append(pairs, SimilarPagePair{
+				state.Pairs = append(state.Pairs, SimilarPagePair{
 					Score:      score,
 					Category:   category,
 					Page1Id:    page1.Id,
@@ -144,8 +209,100 @@ func FindSimilarPagePairs() ([]SimilarPagePair, error) {
 				})
 			}
 		}
+
+		completedPages += len(docs)
+
+		state.Category = ""
+		if ci+1 < len(categories) {
+			state.Category = categories[ci+1]
+		}
+		state.CategoryIndex = ci + 1
+		state.PageIndex = 0
+		state.LastPageID = 0
+		state.CompletedPages = completedPages
+		state.TotalPages = totalPages
+		state.Percent = CurrentProgress().Percent
+		state.Paused = false
+		state.Completed = false
+		sortSimilarPagePairs(state.Pairs)
+		if err := SaveAnalysisState(state); err != nil {
+			return false, err
+		}
 	}
 
+	sortSimilarPagePairs(state.Pairs)
+	state.Completed = true
+	state.Paused = false
+	state.Percent = 100
+	state.Category = ""
+	state.CategoryIndex = len(categories)
+	state.PageIndex = 0
+	state.LastPageID = 0
+	state.CompletedPages = completedPages
+	state.TotalPages = totalPages
+	if err := SaveAnalysisState(state); err != nil {
+		return false, err
+	}
+
+	setProgress(100, fmt.Sprintf("%d duplicaten gevonden", len(state.Pairs)))
+
+	return false, nil
+}
+
+func savePausedState(state *AnalysisState, category string, categoryIndex, pageIndex, lastPageID, completedPages, totalPages int) error {
+	state.Category = category
+	state.CategoryIndex = categoryIndex
+	state.PageIndex = pageIndex
+	state.LastPageID = lastPageID
+	state.CompletedPages = completedPages
+	state.TotalPages = totalPages
+	state.Percent = CurrentProgress().Percent
+	state.Paused = true
+	state.Completed = false
+	sortSimilarPagePairs(state.Pairs)
+
+	return SaveAnalysisState(state)
+}
+
+func resolveCategoryIndex(categories []string, category string, index int) int {
+	if category != "" {
+		for i, available := range categories {
+			if available == category {
+				return i
+			}
+		}
+	}
+
+	if index < 0 {
+		return 0
+	}
+	if index > len(categories) {
+		return len(categories)
+	}
+
+	return index
+}
+
+func resolveStartIndex(docs []analysisDoc, pageIndex, lastPageID int) int {
+	if lastPageID > 0 {
+		for i := range docs {
+			if docs[i].page.Id == lastPageID {
+				return i + 1
+			}
+		}
+	}
+
+	if pageIndex < 0 {
+		return 0
+	}
+	if pageIndex > len(docs) {
+		return len(docs)
+	}
+
+	return pageIndex
+}
+
+func sortSimilarPagePairs(pairs []SimilarPagePair) {
 	sort.Slice(pairs, func(i, j int) bool {
 		if pairs[i].Score != pairs[j].Score {
 			return pairs[i].Score > pairs[j].Score
@@ -158,8 +315,4 @@ func FindSimilarPagePairs() ([]SimilarPagePair, error) {
 		}
 		return pairs[i].Page2Title < pairs[j].Page2Title
 	})
-
-	setProgress(100, fmt.Sprintf("%d duplicaten gevonden", len(pairs)))
-
-	return pairs, nil
 }

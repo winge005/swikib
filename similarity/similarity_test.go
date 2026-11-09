@@ -67,6 +67,20 @@ func TestScorePrefersSimilarContent(t *testing.T) {
 	}
 }
 
+func TestScoreTitleOnly(t *testing.T) {
+	score := Score(
+		"De val van het Romeinse Rijk",
+		"",
+		"De val van het Romeinse Rijk",
+		"Het Romeinse Rijk viel uiteen door politieke instabiliteit.",
+		false,
+	)
+
+	if score != 1 {
+		t.Fatalf("expected 1 for an identical title, got %v", score)
+	}
+}
+
 func TestBuildMatchQuery(t *testing.T) {
 	query := BuildMatchQuery("Rusland viel Oekraïne binnen in februari 2022", 40)
 	if query == "" {

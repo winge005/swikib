@@ -86,10 +86,10 @@ func ScoreSets(titleA, contentA, titleB, contentB map[string]struct{}, sameCateg
 	titleSimilarity := JaccardSets(titleA, titleB)
 
 	contentSimilarity := 0.0
-	if len(contentA) > 0 || len(contentB) > 0 {
-		contentSimilarity = JaccardSets(contentA, contentB)
-	} else {
+	if len(contentA) == 0 || len(contentB) == 0 {
 		contentSimilarity = titleSimilarity
+	} else {
+		contentSimilarity = JaccardSets(contentA, contentB)
 	}
 
 	score := titleSimilarity*0.35 + contentSimilarity*0.65
